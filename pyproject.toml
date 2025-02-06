@@ -1,0 +1,20 @@
+[project]
+name = "propu"
+authors = [ {name = "Guilain Ernotte", email = "GErnotte@student.uliege.be"} ]
+readme = "README.md"
+description = "Aerospace Propulsion computer code."
+version = "0.0.1"
+dependencies = [
+	"numpy",
+	"matplotlib",
+	"scipy",
+	"pint",
+]
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
