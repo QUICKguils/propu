@@ -1,6 +1,6 @@
 """
-exercices -- Collection of solved exercises
-===========================================
+Collection of solved exercises
+==============================
 
 Submodules
 ----------

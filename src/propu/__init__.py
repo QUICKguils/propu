@@ -1,22 +1,28 @@
 """
-propu -- Aerospace Propulsion computer code
-===========================================
+Aerospace Propulsion computer code
+==================================
 
 This python package holds all the computer code written
 as part of the Aerospace Propulsion course (AERO0014).
 
 Subpackages
 -----------
-util      -- Common utilities that are used throughout the code.
-bemt      -- Blade element momentum theory and associated project.
-turbine   -- Gas turbine analyses and associated project.
 exercices -- Collection of solved exercises.
+project   -- Code developed as part of the project.
 exam      -- Code developed as part of the written exam.
+
+Submodules
+----------
+mplrc        -- Set some global matplotlib parameters.
+constant     -- Constant quantities used throughout the code.
+isatmosphere -- International Standard Atmosphere.
+bemt         -- Blade element momentum techniques.
+turbine      -- Gas turbine analyses.
 """
 
 import pathlib as _pathlib
 
-from propu.util import mplrc
+from propu import mplrc
 
 ROOT_PATH = _pathlib.Path(__file__).parent.parent.parent
 
