@@ -6,6 +6,9 @@ Discuss your results with the assumptions of the BEMT, flow conditions and
 forces.
 """
 
+from typing import NamedTuple
+import re
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,148 +17,190 @@ from propu.constant import uconv
 from propu.isatmosphere import get_state
 from propu.project import statement as stm
 
-# Operating conditions
-Om_range = np.array([1000, 1000, 800, 800, 800, 700, 700]) * uconv("rpm", "rad/s")  # Rotation speeds [rad/s]
-theta_75deg_range = np.array([15, 20, 25, 30, 35, 40, 45])  # Collective pitches [°]
-theta_75_range = theta_75deg_range * uconv("deg", "rad")  # Collective pitches [rad]
-v_inf_range = np.linspace(35, 115, 20) * uconv("mi/hr", "m/s")  # Wind speeds [m/s]
-rho, _, _, _ = get_state(0)  # Density of the air at sea level [kg/m³]
-mu = 17.89e-6  # Dynamic viscosity of the air [Pa*s]
+MEASUREMENTS = [
+    # "apce_9x45_rd0996_4002.txt",
+    # "apce_9x45_jb0998_6018.txt",
+    # "apce_9x6_rd0988_4003.txt",
+    # "apce_9x6_rd0991_6038.txt",
+    "apce_11x7_kt0535_3003.txt",
+    "apce_11x7_kt0539_4997.txt",
+    # "apce_11x10_kt0511_3006.txt",
+    # "apce_11x10_kt0463_5007.txt",
+]
 
 
-def main(*, sdiv=20, plot=True):
+class Performance(NamedTuple):
+    J: np.ndarray[float]
+    CT: np.ndarray[float]
+    CP: np.ndarray[float]
+    eta: np.ndarray[float]
+
+
+class Part2Solution(NamedTuple):
+    """Gather all relevent input data and output results."""
+    prop: bemt.Propeller
+    Om: float
+    measured: Performance
+    computed: Performance
+    converged: np.ndarray[bool]
+
+
+def main(*, sdiv=18, flag_out=True) -> dict[str, Part2Solution]:
     """Execute the second part of the project."""
-    thrusts, powers, Oms, v_infs = reproduce_report(sdiv=sdiv)
-    J, C_T, C_P, eta = performance_coefficients(thrusts, powers, Oms, v_infs)
+    sol_dict = dict()
+    plot_sol = sol_plotter(flag_out)
 
-    # Plot the quantities, if desired
-    plot and plot_sol(J, C_T, C_P, eta)
+    for fname in MEASUREMENTS:
+        part2_sol = compute_performance(fname, sdiv=sdiv)
+        sol_dict[fname] = part2_sol
+        plot_sol(part2_sol)
 
-    return J, C_T, C_P, eta
-
-
-# NOTE:
-# Inspired from the simple indirect search,
-# as used in the Aeroelasticity course.
-def reproduce_report(*, sdiv=20):
-    """Reproduce the experimental method conducted in the reference NACA report.
-
-    Calculate the propeller thrust and power for an increasing wind speed, up
-    to a maximum of 115 mph. Then decrease the propeller rotation speed to
-    further increase the advance ratio. Stop the computation when the computed
-    thrust becomes negative.
-    """
-    # Need for python list to be able to append dynamically, but
-    # need for numpy array for array computation.
-    thrusts = [np.array([]) for _ in theta_75_range]  # [N]
-    powers = [np.array([]) for _ in theta_75_range]  # [W]
-    Oms = [np.array([]) for _ in theta_75_range]  # [rad/s]
-    v_infs = [np.array([]) for _ in theta_75_range]  # [m/s]
-
-    for theta_id, _ in enumerate(theta_75_range):
-        Om = Om_range[theta_id]
-
-        # Loop over all prescribed wind speeds.
-        for v_inf_id, v_inf in enumerate(v_inf_range):
-            oper = bemt.OperatingConditions(
-                Om=Om, theta_75=theta_75_range[theta_id], v_inf=v_inf, rho=rho, mu=mu
-            )
-            sol = bemt.bem(stm.prop, oper, sdiv=sdiv)
-
-            if sol.thrust < 0:
-                break
-
-            Oms[theta_id] = np.append(Oms[theta_id], oper.Om)
-            v_infs[theta_id] = np.append(v_infs[theta_id], oper.v_inf)
-            thrusts[theta_id] = np.append(thrusts[theta_id], sol.thrust)
-            powers[theta_id] = np.append(powers[theta_id], sol.torque * Om)
-
-        # Algorithm heuristics
-        dOm = 0.03 * Om
-        dOm_refine_factor = 2
-        thrust_atol = 1e-1
-        max_iter = 40
-
-        # Decrease the rotation speed to reach zero thrust.
-        has_converged = False
-        for n_iter in range(1, max_iter + 1):
-            oper = bemt.OperatingConditions(
-                Om=Om, theta_75=theta_75_range[theta_id], v_inf=v_inf, rho=rho, mu=mu
-            )
-            sol = bemt.bem(stm.prop, oper, sdiv=sdiv)
-
-            if sol.thrust > 0:
-                Oms[theta_id] = np.append(Oms[theta_id], oper.Om)
-                v_infs[theta_id] = np.append(v_infs[theta_id], oper.v_inf)
-                thrusts[theta_id] = np.append(thrusts[theta_id], sol.thrust)
-                powers[theta_id] = np.append(powers[theta_id], sol.torque * Om)
-
-            # Overshoot the thrust zero value ?
-            # -> Step back and refine the Om step size.
-            if sol.thrust < 0:
-                Om += dOm
-                dOm /= dOm_refine_factor
-            else:
-                Om -= dOm
-
-            # Obtain convergence ?
-            if np.abs(sol.thrust) < thrust_atol:
-                has_converged = True
-                break
-
-        if not has_converged:
-            print(f"project.part2 -- No convergence after {n_iter} iterations.")
-
-    return thrusts, powers, Oms, v_infs
+    return sol_dict
 
 
-def performance_coefficients(thrusts, powers, Oms, v_infs):
-    """Compute the performance coefficients."""
+def extract_apc_data(fname: str) -> tuple[str, float, Performance]:
+    """Extract data from a UIUC performance measurement file."""
+    # WARN: Good ol' regexp. Not robust, but works fine here.
+    prop_name = re.search(r'([^_]+_[^_]+)', fname).group(1)
+    rpm = float(re.search(r'_(\d+)\.txt$', fname).group(1))
 
-    J = [np.array([]) for _ in theta_75_range]  # Advance ratios
-    C_T = [np.array([]) for _ in theta_75_range]  # Thrust coefficients
-    C_P = [np.array([]) for _ in theta_75_range]  # Power coefficients
-    eta = [np.array([]) for _ in theta_75_range]  # Propulsive efficiencies
+    data = np.loadtxt(str(stm._DATA_PATH / "apc" / fname), skiprows=1)
+    perf = Performance(J=data[:, 0], CT=data[:, 1], CP=data[:, 2], eta=data[:, 3])
 
-    for i, _ in enumerate(theta_75_range):
-        n = Oms[i] * uconv("rad/s", "rps")
-        J[i] = v_infs[i] / (2 * stm.span * n)
-        C_T[i] = 4 * thrusts[i] / ((2 * stm.span) ** 4 * rho * n**2)
-        C_P[i] = 4 * powers[i] / ((2 * stm.span) ** 5 * rho * n**3)
-        eta[i] = C_T[i] / C_P[i] * J[i]
-
-    # NOTE: to translate in imperial units, use:
-    # J   = J   / C.mph2ms * C.ft2m * C.tr2rad
-    # C_T = C_T / C.lbf2n * C.ft2m**4 * C.slug2kg / C.ft2m**3 * C.tr2rad**2
-    # C_P = C_P / C.hp2w * C.ft2m**5 * C.slug2kg / C.ft2m**3 * C.tr2rad**3
-
-    return J, C_T, C_P, eta
+    return (prop_name, rpm, perf)
 
 
-def plot_sol(J, C_T, C_P, eta) -> None:
-    """Plot the solutions of the second part of the project."""
-    from propu.mplrc import REPORT_TW
+def compute_performance(fname: str, *, sdiv) -> Part2Solution:
+    (prop_name, rpm, perf_measured) = extract_apc_data(fname)
+    prop = stm.create_apc_propeller(prop_name)
 
-    fig, axs = plt.subplot_mosaic(
-        [["eta", "eta"], ["thrust", "power"]],
-        figsize=(REPORT_TW, 0.8 * REPORT_TW)
+    rho, _, _, _ = get_state(0)  # Density of the air at sea level [kg/m³]
+    mu = 17.89e-6  # Dynamic viscosity of the air [Pa*s]
+    n = rpm * uconv("rpm", "rps")
+    Om = rpm * uconv("rpm", "rad/s")
+    D = 2 * prop.geometry.span
+
+    CT_computed = np.zeros(perf_measured.J.shape)
+    CP_computed = np.zeros(perf_measured.J.shape)
+    eta_computed = np.zeros(perf_measured.J.shape)
+    converged_computed = np.zeros(perf_measured.J.shape, dtype=bool)
+
+    for i, J in enumerate(perf_measured.J):
+        v_inf = n * D * J
+        oper = bemt.OperatingConditions(Om=Om, v_inf=v_inf, rho=rho, mu=mu)
+        bem_sol = bemt.bem(prop, oper, sdiv=sdiv)
+
+        CT_computed[i] = bem_sol.thrust / (rho*n**2*D**4)
+        CP_computed[i] = bem_sol.power / (rho*n**3*D**5)
+        eta_computed[i] = J * CT_computed[i]/CP_computed[i]
+        converged_computed[i] = np.all(bem_sol.flag_converged_dist)
+
+    perf_computed = Performance(
+        J=perf_measured.J,
+        CT=CT_computed,
+        CP=CP_computed,
+        eta=eta_computed
     )
 
-    # Plot the perfomance coefficients vs advance ratio,
-    # for different collective pitches.
-    for i, _ in enumerate(theta_75_range):
-        axs["eta"].plot(
-            J[i], eta[i],
-            marker=".", linewidth=0.5, label=f"{theta_75deg_range[i]} (°)"
+    return Part2Solution(
+        prop=prop,
+        Om=Om,
+        measured=perf_measured,
+        computed=perf_computed,
+        converged=converged_computed
+    )
+
+
+# TODO: plot not converged sols with crosses
+def sol_plotter(flag_out=True):
+    """Return a solution plotter, depending on flag_plot.
+
+    The matplotlib object instances are kept as a closures,
+    to ensure its idempotence through multiple plotter calls.
+    """
+    def plot(sol: Part2Solution):
+        """Plot the solutions of the first part of the project."""
+        (prop, Om, measured, computed, converged) = sol
+        rpm = Om * uconv("rad/s", "rpm")
+        print(converged)
+
+        # Thrust coefficients
+        measured_CT_line, = axs["CT"].plot(
+            measured.J, measured.CT,
+            linestyle="dashed", linewidth=0.8,
         )
-        axs["thrust"].plot(J[i], C_T[i], marker=".", linewidth=0.5)
-        axs["power"].plot(J[i], C_P[i], marker=".", linewidth=0.5)
+        axs["CT"].plot(
+            computed.J, computed.CT,
+            linestyle="solid", linewidth=0.8,
+            color= measured_CT_line.get_color(),
+        )
+        axs["CT"].scatter(
+            computed.J[converged], computed.CT[converged],
+            s=30, marker=".", color=measured_CT_line.get_color(),
+        )
+        axs["CT"].scatter(
+            computed.J[~converged], computed.CT[~converged],
+            s=30, marker="x", color=measured_CT_line.get_color(),
+        )
 
-    axs["eta"].set_xlabel("Advance ratio")
-    axs["eta"].set_ylabel("Propulsive efficiency")
-    axs["thrust"].set_xlabel("Advance ratio")
-    axs["thrust"].set_ylabel("Thrust coefficient")
-    axs["power"].set_xlabel("Advance ratio")
-    axs["power"].set_ylabel("Power coefficient")
+        axs["CT"].set_xlabel(r"$J$")
+        axs["CT"].set_ylabel(r"$C_T$")
 
-    fig.show()
+        # Power coefficients
+        measured_CP_line, = axs["CP"].plot(
+            measured.J, measured.CP,
+            linestyle="dashed", linewidth=0.8,
+        )
+        axs["CP"].plot(
+            computed.J, computed.CP,
+            linestyle="solid", linewidth=0.8,
+            color=measured_CP_line.get_color(),
+        )
+        axs["CP"].scatter(
+            computed.J[converged], computed.CP[converged],
+            s=30, marker=".", color=measured_CP_line.get_color(),
+        )
+        axs["CP"].scatter(
+            computed.J[~converged], computed.CP[~converged],
+            s=30, marker="x", color=measured_CP_line.get_color(),
+        )
+        axs["CP"].set_xlabel(r"$J$")
+        axs["CP"].set_ylabel(r"$C_P$")
+
+        # Propulsive efficiencies
+        measured_eta_line, = axs["eta"].plot(
+            measured.J, measured.eta,
+            linestyle="dashed", linewidth=0.8,
+        )
+        axs["eta"].plot(
+            computed.J, computed.eta,
+            linestyle="solid", linewidth=0.8,
+            color=measured_eta_line.get_color(),
+            label=f"{prop.pretty_name} @ {rpm:.0f} rpm",
+        )
+        axs["eta"].scatter(
+            computed.J[converged], computed.eta[converged],
+            s=30, marker=".", color=measured_eta_line.get_color(),
+        )
+        axs["eta"].scatter(
+            computed.J[~converged], computed.eta[~converged],
+            s=30, marker="x", color=measured_eta_line.get_color(),
+        )
+        axs["eta"].set_xlabel(r"$J$")
+        axs["eta"].set_ylabel(r"$\eta_p$")
+
+        fig.legend(loc='outside upper center', ncols=2)
+        fig.show()
+
+    def no_plot(*args, **kwargs):
+        pass
+
+    if flag_out:
+        from propu.mplrc import REPORT_TW
+        fig, axs = plt.subplot_mosaic(
+            [["CT", "CP"], ["eta", "eta"]],
+            figsize=(REPORT_TW, REPORT_TW)
+        )
+        return plot
+
+    return no_plot

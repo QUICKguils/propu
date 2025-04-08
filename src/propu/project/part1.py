@@ -15,43 +15,78 @@ from propu.constant import uconv
 from propu.isatmosphere import get_state
 from propu.project import statement as stm
 
-# Operating conditions
-Om = 9000 * uconv("rpm", "rad/s")  # Rotation speed [rad/s]
-v_inf = 20  # Wind speeds [m/s]
-rho, _, _, _ = get_state(0)  # Density of the air at sea level [kg/m³]
-mu = 17.89e-6  # Dynamic viscosity of the air [Pa*s]
-oper = bemt.OperatingConditions(Om=Om, v_inf=v_inf, rho=rho, mu=mu)
 
-
-def main(*, sdiv=20, flag_plot=True):
+def main(*, sdiv=18, flag_out=True) -> dict[str, bemt.BemSolution]:
     """Execute the first part of the project."""
     sol_dict = dict()
-    plot = sol_plotter(flag_plot)
+    oper = get_operating_conditions()
+    plot = sol_plotter(flag_out)
+    display = sol_displayer(flag_out)
 
-    for iprop, prop_name in enumerate(stm.APC_dict):
+    for prop_name in stm.APC_dict:
         prop = stm.create_apc_propeller(prop_name)
         sol = bemt.bem(prop, oper, sdiv=sdiv)
-        sol_dict[prop.name] = sol
-        plot(prop, sol)
+        sol_dict[prop.keyword] = sol
+        plot(sol)
+        display(sol)
 
     return sol_dict
 
 
-def sol_plotter(flag_plot=True):
-    """Return a solution plotter, depending on flag_plot.
+def get_operating_conditions() -> bemt.OperatingConditions:
+    """Get the operating conditions, as specified in the statement."""
+    Om = 9000 * uconv("rpm", "rad/s")  # Rotation speed [rad/s]
+    v_inf = 20  # Wind speed [m/s]
+    rho, _, _, _ = get_state(0)  # Density of the air at sea level [kg/m³]
+    mu = 17.89e-6  # Dynamic viscosity of the air [Pa*s]
+    return bemt.OperatingConditions(Om=Om, v_inf=v_inf, rho=rho, mu=mu)
 
-    The matplotlib object instance is kept as closure,
-    to ensure its idempotence.
+
+def sol_displayer(flag_out=True):
+    """Return a solution displayer, depending on `flag_out`."""
+
+    def display(sol: bemt.BemSolution) -> None:
+        """Display the solutions of the first part of the project."""
+        print(
+            f"Solution for {sol.prop.pretty_name}",
+            f"    Thrust: {sol.thrust:.2f} N",
+            f"    Power: {sol.power:.2f} W",
+            f"    Efficiency: {(sol.eta*1e2):.2f} %",
+            sep="\n"
+        )
+
+    def no_display(*args, **kwargs):
+        pass
+
+    if flag_out:
+        return display
+    return no_display
+
+
+def sol_plotter(flag_out=True):
+    """Return a solution plotter, depending on `flag_out`.
+
+    The matplotlib object instance is kept as a closure,
+    to ensure its idempotence through multiple plotter calls.
     """
-    fig, (ax_thrust, ax_power) = plt.subplots(1, 2, figsize=(10, 5))
-
-    def plot(prop: bemt.Propeller, sol: bemt.BemSolution):
+    def plot(sol: bemt.BemSolution):
         """Plot the solutions of the first part of the project."""
+        r_adim = sol.r_dist / sol.prop.geometry.span
+        dTdr = sol.thrust_dist / sol.dr_dist
+        dPdr = sol.power_dist / sol.dr_dist
+
         # Thrust distribution along the blades span
-        ax_thrust.plot(
-            sol.r_dist / prop.geometry.span,
-            sol.thrust_dist / sol.dr_dist,
-            marker=".", linewidth=0.5, label=prop.name,
+        thrust_line, = ax_thrust.plot(
+            r_adim, dTdr,
+            linewidth=0.8, label=sol.prop.pretty_name,
+        )
+        ax_thrust.scatter(
+            r_adim[sol.flag_converged_dist], dTdr[sol.flag_converged_dist],
+            s=30, marker=".", color=thrust_line.get_color(),
+        )
+        ax_thrust.scatter(
+            r_adim[~sol.flag_converged_dist], dTdr[~sol.flag_converged_dist],
+            s=30, marker="x", color=thrust_line.get_color(),
         )
         ax_thrust.set_title("Thrust distribution")
         ax_thrust.set_xlabel("$r/R$")
@@ -59,10 +94,17 @@ def sol_plotter(flag_plot=True):
         ax_thrust.legend()
 
         # Power distribution along the blades span
-        ax_power.plot(
-            sol.r_dist / prop.geometry.span,
-            sol.torque_dist * Om / sol.dr_dist,
-            marker=".", linewidth=0.5, label=prop.name,
+        power_line, = ax_power.plot(
+            r_adim, dPdr,
+            linewidth=0.8, label=sol.prop.pretty_name,
+        )
+        ax_power.scatter(
+            r_adim[sol.flag_converged_dist], dPdr[sol.flag_converged_dist],
+            s=30, marker=".", color=power_line.get_color(),
+        )
+        ax_power.scatter(
+            r_adim[~sol.flag_converged_dist], dPdr[~sol.flag_converged_dist],
+            s=30, marker="x", color=power_line.get_color(),
         )
         ax_power.set_title("Power distribution")
         ax_power.set_xlabel("$r/R$")
@@ -74,6 +116,8 @@ def sol_plotter(flag_plot=True):
     def no_plot(*args, **kwargs):
         pass
 
-    if flag_plot:
+    if flag_out:
+        fig, (ax_thrust, ax_power) = plt.subplots(1, 2, figsize=(10, 5))
         return plot
+
     return no_plot
