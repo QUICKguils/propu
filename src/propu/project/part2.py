@@ -9,7 +9,6 @@ forces.
 from typing import NamedTuple
 import re
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from propu import bemt
@@ -18,13 +17,13 @@ from propu.isatmosphere import get_state
 from propu.project import statement as stm
 
 MEASUREMENTS = [
-    # "apce_9x45_rd0996_4002.txt",
+    "apce_9x45_rd0996_4002.txt",
     # "apce_9x45_jb0998_6018.txt",
-    # "apce_9x6_rd0988_4003.txt",
+    "apce_9x6_rd0988_4003.txt",
     # "apce_9x6_rd0991_6038.txt",
     "apce_11x7_kt0535_3003.txt",
-    "apce_11x7_kt0539_4997.txt",
-    # "apce_11x10_kt0511_3006.txt",
+    # "apce_11x7_kt0539_4997.txt",
+    "apce_11x10_kt0511_3006.txt",
     # "apce_11x10_kt0463_5007.txt",
 ]
 
@@ -36,7 +35,7 @@ class Performance(NamedTuple):
     eta: np.ndarray[float]
 
 
-class Part2Solution(NamedTuple):
+class Solution(NamedTuple):
     """Gather all relevent input data and output results."""
     prop: bemt.Propeller
     Om: float
@@ -45,15 +44,15 @@ class Part2Solution(NamedTuple):
     converged: np.ndarray[bool]
 
 
-def main(*, sdiv=18, flag_out=True) -> dict[str, Part2Solution]:
+def main(*, out_enabled=True) -> dict[str, Solution]:
     """Execute the second part of the project."""
     sol_dict = dict()
-    plot_sol = sol_plotter(flag_out)
 
     for fname in MEASUREMENTS:
-        part2_sol = compute_performance(fname, sdiv=sdiv)
-        sol_dict[fname] = part2_sol
-        plot_sol(part2_sol)
+        sol_dict[fname] = compute_performance(fname)
+
+    if out_enabled:
+        plot_solution(sol_dict)
 
     return sol_dict
 
@@ -70,9 +69,9 @@ def extract_apc_data(fname: str) -> tuple[str, float, Performance]:
     return (prop_name, rpm, perf)
 
 
-def compute_performance(fname: str, *, sdiv) -> Part2Solution:
-    (prop_name, rpm, perf_measured) = extract_apc_data(fname)
-    prop = stm.create_apc_propeller(prop_name)
+def compute_performance(fname: str) -> Solution:
+    (prop_keyword, rpm, perf_measured) = extract_apc_data(fname)
+    prop = stm.create_apc_propeller(prop_keyword)
 
     rho, _, _, _ = get_state(0)  # Density of the air at sea level [kg/m³]
     mu = 17.89e-6  # Dynamic viscosity of the air [Pa*s]
@@ -80,49 +79,51 @@ def compute_performance(fname: str, *, sdiv) -> Part2Solution:
     Om = rpm * uconv("rpm", "rad/s")
     D = 2 * prop.geometry.span
 
-    CT_computed = np.zeros(perf_measured.J.shape)
-    CP_computed = np.zeros(perf_measured.J.shape)
-    eta_computed = np.zeros(perf_measured.J.shape)
-    converged_computed = np.zeros(perf_measured.J.shape, dtype=bool)
+    CT = np.zeros(perf_measured.J.shape)
+    CP = np.zeros(perf_measured.J.shape)
+    eta = np.zeros(perf_measured.J.shape)
+    converged = np.zeros(perf_measured.J.shape, dtype=bool)
 
     for i, J in enumerate(perf_measured.J):
         v_inf = n * D * J
         oper = bemt.OperatingConditions(Om=Om, v_inf=v_inf, rho=rho, mu=mu)
-        bem_sol = bemt.bem(prop, oper, sdiv=sdiv)
+        bem_sol = bemt.bem(prop, oper)
 
-        CT_computed[i] = bem_sol.thrust / (rho*n**2*D**4)
-        CP_computed[i] = bem_sol.power / (rho*n**3*D**5)
-        eta_computed[i] = J * CT_computed[i]/CP_computed[i]
-        converged_computed[i] = np.all(bem_sol.flag_converged_dist)
+        CT[i] = bem_sol.thrust / (rho*n**2*D**4)
+        CP[i] = bem_sol.power / (rho*n**3*D**5)
+        eta[i] = bem_sol.eta  # alternatively, eta[i] = J * CT[i]/CP[i]
+        converged[i] = np.all(bem_sol.converged_dist)
 
     perf_computed = Performance(
-        J=perf_measured.J,
-        CT=CT_computed,
-        CP=CP_computed,
-        eta=eta_computed
+        J=perf_measured.J, CT=CT, CP=CP, eta=eta
     )
 
-    return Part2Solution(
+    return Solution(
         prop=prop,
         Om=Om,
         measured=perf_measured,
         computed=perf_computed,
-        converged=converged_computed
+        converged=converged
     )
 
 
-# TODO: plot not converged sols with crosses
-def sol_plotter(flag_out=True):
-    """Return a solution plotter, depending on flag_plot.
+def plot_solution(sol_dict: dict[str, Solution]) -> None:
+    """Plot the computed solutions.
 
-    The matplotlib object instances are kept as a closures,
-    to ensure its idempotence through multiple plotter calls.
+    The matplotlib object instances are kept as closures,
+    to ensure their idempotence through multiple plot calls.
     """
-    def plot(sol: Part2Solution):
-        """Plot the solutions of the first part of the project."""
+    import matplotlib.pyplot as plt
+    from propu.mplrc import REPORT_TW
+    fig, axs = plt.subplot_mosaic(
+        [["CT", "CP"], ["eta", "eta"]],
+        figsize=(REPORT_TW, REPORT_TW)
+    )
+
+    def plot(sol: Solution):
+        """Plot the solutions of this project part."""
         (prop, Om, measured, computed, converged) = sol
         rpm = Om * uconv("rad/s", "rpm")
-        print(converged)
 
         # Thrust coefficients
         measured_CT_line, = axs["CT"].plot(
@@ -136,11 +137,11 @@ def sol_plotter(flag_out=True):
         )
         axs["CT"].scatter(
             computed.J[converged], computed.CT[converged],
-            s=30, marker=".", color=measured_CT_line.get_color(),
+            s=30, zorder=2.5, marker=".", color=measured_CT_line.get_color(),
         )
         axs["CT"].scatter(
             computed.J[~converged], computed.CT[~converged],
-            s=30, marker="x", color=measured_CT_line.get_color(),
+            s=30, zorder=2.5, marker="x", color=measured_CT_line.get_color(),
         )
 
         axs["CT"].set_xlabel(r"$J$")
@@ -158,11 +159,11 @@ def sol_plotter(flag_out=True):
         )
         axs["CP"].scatter(
             computed.J[converged], computed.CP[converged],
-            s=30, marker=".", color=measured_CP_line.get_color(),
+            s=30, zorder=2.5, marker=".", color=measured_CP_line.get_color(),
         )
         axs["CP"].scatter(
             computed.J[~converged], computed.CP[~converged],
-            s=30, marker="x", color=measured_CP_line.get_color(),
+            s=30, zorder=2.5, marker="x", color=measured_CP_line.get_color(),
         )
         axs["CP"].set_xlabel(r"$J$")
         axs["CP"].set_ylabel(r"$C_P$")
@@ -180,27 +181,17 @@ def sol_plotter(flag_out=True):
         )
         axs["eta"].scatter(
             computed.J[converged], computed.eta[converged],
-            s=30, marker=".", color=measured_eta_line.get_color(),
-        )
+            s=30, zorder=2.5, marker=".", color=measured_eta_line.get_color(),
+       )
         axs["eta"].scatter(
             computed.J[~converged], computed.eta[~converged],
-            s=30, marker="x", color=measured_eta_line.get_color(),
+            s=30, zorder=2.5, marker="x", color=measured_eta_line.get_color(),
         )
         axs["eta"].set_xlabel(r"$J$")
         axs["eta"].set_ylabel(r"$\eta_p$")
 
-        fig.legend(loc='outside upper center', ncols=2)
-        fig.show()
+    for _, sol in sol_dict.items():
+        plot(sol)
 
-    def no_plot(*args, **kwargs):
-        pass
-
-    if flag_out:
-        from propu.mplrc import REPORT_TW
-        fig, axs = plt.subplot_mosaic(
-            [["CT", "CP"], ["eta", "eta"]],
-            figsize=(REPORT_TW, REPORT_TW)
-        )
-        return plot
-
-    return no_plot
+    fig.legend(loc='outside upper center', ncols=2)
+    fig.show()

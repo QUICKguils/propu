@@ -6,13 +6,14 @@ from typing import NamedTuple
 import numpy as np
 from scipy import interpolate
 
+from propu.constant import uconv
+
 
 class Airfoil(NamedTuple):
     """Tabulated Airfoil data.
 
-    Contain the tabulated coordinates of the airfoil profile, as well as
-    the tabulated values of cl and cd, for the corresponding sampled angles of
-    attack and Reynolds numbers.
+    Contain the tabulated coordinates of the airfoil profile, as well as the tabulated values of cl
+    and cd, for the corresponding sampled angles of attack and Reynolds numbers.
     """
     profile: np.ndarray[float]  # Sample of airfoil coordinates [m]
     aoa: np.ndarray[float]  # Sample of angles of attack [rad]
@@ -33,9 +34,8 @@ class PropellerGeometry(NamedTuple):
 class Propeller(abc.ABC):
     """Abstract base class to model a generic propeller.
 
-    The user can create concrete propellers that derive from this base class,
-    as long as it satisfies this interface. That is, as long as it has the
-    following properties:
+    The user can create concrete propellers that derive from this base class, as long as it
+    satisfies this interface. That is, as long as it has the following properties:
         keyword : str
             The reference name of the concrete propeller. This can be used as a
             keyword by the creator, to instantiate the propeller.
@@ -49,17 +49,16 @@ class Propeller(abc.ABC):
 
     Notes
     -----
-    Using a factory pattern may be a bit overengineered here, given the limited
-    size of the code. However, it allows the bemt module to be uncoupled from
-    the concrete propellers that can be abitrary defined elsewhere, thus making
-    this module more flexible.
-    See for example the propu.project.statement module for a concrete usage of
-    this factory pattern, applied to APC propellers.
+    Using a factory pattern may be a bit overengineered here, given the limited size of the code.
+    However, it allows the bemt module to be uncoupled from the concrete propellers that can be
+    abitrary defined elsewhere, thus making this module more flexible.
+    See for example the propu.project.statement module for a concrete usage of this factory pattern,
+    applied to APC propellers.
 
-    More concretely, the author choose to use a factory pattern for the
-    propellers mainly because it constitutes a good object-oriented programming
-    excercise.
+    More concretely, the author choose to use a factory pattern for the propellers mainly because it
+    constitutes a good object-oriented programming excercise.
     """
+
     @property
     @abc.abstractmethod
     def keyword() -> str:
@@ -103,10 +102,11 @@ class LocalBemSolution(NamedTuple):
     va2: float  # Local axial speed [m/s]
     vu2: float  # Local absolute tangential speed [m/s]
     wu2: float  # Local relative tangential speed [m/s]
+    beta: float  # Local relative flow angle [rad]
     thrust: float  # Thrust generated in the local stream tube [N]
     torque: float  # Torque generated in the local stream tube [N*m]
     # Status
-    flag_converged: bool  # Raised if the solution has converged.
+    converged: bool  # Raised if the solution has converged.
 
 
 class BemSolution:
@@ -117,10 +117,11 @@ class BemSolution:
         # Extract data from local bem solutions in separate lists
         self.r_dist = np.array([sol.loc.r for sol in lsols])
         self.dr_dist = np.array([sol.loc.dr for sol in lsols])
-        self.flag_converged_dist = np.array([sol.flag_converged for sol in lsols])
+        self.converged_dist = np.array([sol.converged for sol in lsols])
         self.va2_dist = np.array([sol.va2 for sol in lsols])
         self.vu2_dist = np.array([sol.vu2 for sol in lsols])
         self.wu2_dist = np.array([sol.wu2 for sol in lsols])
+        self.beta_dist = np.array([sol.beta for sol in lsols])
         self.thrust_dist = np.array([sol.thrust for sol in lsols])
         self.torque_dist = np.array([sol.torque for sol in lsols])
         self.power_dist = self.torque_dist * self.oper.Om
@@ -128,27 +129,34 @@ class BemSolution:
         self.thrust = np.sum(self.thrust_dist)  # Total thrust provided by the propeller [N]
         self.torque = np.sum(self.torque_dist)  # Total torque provided by the propeller [N*m]
         self.power = np.sum(self.power_dist)  # Total power neeed to drive the propeller [W]
-        self.eta = self.thrust/self.power * self.oper.v_inf  # Propulsive efficiency [-]
+        self.eta = self.thrust / self.power * self.oper.v_inf  # Propulsive efficiency [-]
 
 
 def local_bem(
     prop: Propeller, oper: OperatingConditions, loc: Location,
-    *, rtol=1e-5, atol=1e-5, max_iter=100,
+    *, relax=0.3, rtol=1e-5, atol=1e-5, max_iter=100,
 ) -> LocalBemSolution:
-    """Momentum balance in one stream tube, for one blade.
+    """Momentum balance in one stream tube.
 
-    This function applies the blade element method to the specified propeller
-    `prop`, under the operating conditions `oper` and for the balde element
-    located at `loc`.
+    Parameters
+    ----------
+    prop: Propeller
+        The propeller on which the momentum balance is performed.
+    oper: OperatingConditions
+        The conditions at which the propeller is operating.
+    loc: Location
+        The location of the blade element (and associated stream tube) on which the local momentum
+        balance is performed.
+    relax : float, optional
+        Relaxation factor that stabilizes the convergence, by reducing the amplitude of the step
+        corrections.
+    atol, rtol: float, optional
+        The maximal absolute and relative difference of the downstream speeds between each steps
+        that should be obtained in order to claim a convergence of the solution.
+    max_iter: int, optional
+        The maximum number of iterations that are tolerated. A warning is printed if no convergence
+        is obtained after this number of iterations.
     """
-    # Initial speed guesstimates
-    #
-    # NOTE: Avoid to set null speed for va3.
-    # If this is the case, then the computed mass flow in null,
-    # hence va3_new and vu2p_new are NaN.
-    va3 = max(oper.v_inf, 1)
-    vu2p = 0  # [m/s]
-
     # Linear interpolation on the blade span to retrieve pitch and chord at `loc`
     chord_lerp = interpolate.make_interp_spline(prop.geometry.stations, prop.geometry.chords, k=1)
     pitch_lerp = interpolate.make_interp_spline(prop.geometry.stations, prop.geometry.pitches, k=1)
@@ -165,30 +173,36 @@ def local_bem(
         bounds_error=False, fill_value=None
     )
 
+    # Initial guesstimates and iteration parameters
+    #
+    # NOTE: Avoid to set null speed for va3
+    # If this is the case, then the computed mass flow in null,
+    # hence va3_new and vu2p_new are NaN.
+    va3 = max(oper.v_inf, 1.0)
+    vu2p = 0.0  # [m/s]
+    converged = False  # Raised if the speeds have been stabilized
+
     # Determine forces and velocities iteratively
-    relax = 0.3
-    flag_converged = False
     for n_iter in range(1, max_iter + 1):
-        # Velocity components at the propeller disk
+        # Speed triangle at the blade
         va2 = (oper.v_inf + va3) / 2
         vu2 = vu2p / 2
         wu2 = vu2 - oper.Om * loc.r
         w2 = np.sqrt(va2**2 + wu2**2)
-        beta_2 = np.atan2(wu2, va2)
+        beta = np.atan2(wu2, va2)
 
-        aoa = pitch - (np.pi / 2 + beta_2)
+        # Lift and drag of one blade
+        aoa = pitch - (np.pi / 2 + beta)
         Re = oper.rho * w2 * chord / oper.mu
-
         cl = cl_lerp((aoa, Re))
         cd = cd_lerp((aoa, Re))
-
         lift = 0.5 * oper.rho * w2**2 * chord * loc.dr * cl
         drag = 0.5 * oper.rho * w2**2 * chord * loc.dr * cd
 
-        thrust = -prop.geometry.n_blades * (lift * np.sin(beta_2) + drag * np.cos(beta_2))
-        torque =  prop.geometry.n_blades * (lift * np.cos(beta_2) - drag * np.sin(beta_2)) * loc.r
-
-        # New approximations for the absolute velocity components
+        # Momentum balance on the streamtube,
+        # leading to new estimates of the absolute velocity components
+        thrust = -prop.geometry.n_blades * (lift * np.sin(beta) + drag * np.cos(beta))
+        torque =  prop.geometry.n_blades * (lift * np.cos(beta) - drag * np.sin(beta)) * loc.r
         mass_flow = 2 * np.pi * loc.r * loc.dr * oper.rho * va2
         va3_new = oper.v_inf + thrust / mass_flow
         vu2p_new = torque / (mass_flow * loc.r)
@@ -197,32 +211,34 @@ def local_bem(
         va3_ok = np.allclose(va3, va3_new, atol=atol, rtol=rtol)
         vu2p_ok = np.allclose(vu2p, vu2p_new, atol=atol, rtol=rtol)
         if va3_ok and vu2p_ok:
-            flag_converged = True
+            converged = True
             break
 
         # Otherwise update the speeds for the next iteration
-        vu2p = (1-relax) * vu2p + relax * vu2p_new
-        va3 = (1-relax) * va3 + relax * va3_new
+        vu2p = (1 - relax) * vu2p + relax * vu2p_new
+        va3  = (1 - relax) * va3  + relax * va3_new
 
-    if not flag_converged:
+    if not converged:
         print(
             f"bemt -- No local convergence after {n_iter} iterations."
-            f"\n\t{prop.pretty_name=} -- {loc.r=:.4f} -- {oper.Om=:.0f}"
+            f"\n\tpropeller: {prop.pretty_name}"
+            f" -- radius: {loc.r:.4f} m"
+            f" -- rotation: {oper.Om*uconv("rad/s", "rpm"):.0f} rpm"
         )
 
     return LocalBemSolution(
         prop=prop, oper=oper, loc=loc,
-        va2=va2, vu2=vu2, wu2=wu2, thrust=thrust, torque=torque,
-        flag_converged=flag_converged
+        va2=va2, vu2=vu2, wu2=wu2, beta=beta,
+        thrust=thrust, torque=torque,
+        converged=converged,
     )
 
 
-def bem(prop: Propeller, oper: OperatingConditions, sdiv=20) -> BemSolution:
+def bem(prop: Propeller, oper: OperatingConditions, sdiv=20, **local_bem_kwargs) -> BemSolution:
     """Calculate quantities derived from momentum balance of a propeller.
 
-    This function applies the blade element method to the propeller `prop`, for
-    the specified operating conditions `oper`, and the number of subdivisions
-    `sdiv` in the blades.
+    This function applies the blade element method to the propeller `prop`, for the specified
+    operating conditions `oper`, and the number of subdivisions `sdiv` in the blades.
     """
     # Virtual "cuts" in the blades, delimiting the blade elements.
     # There's no requirement to have them necessarily linearly spaced.
@@ -239,6 +255,6 @@ def bem(prop: Propeller, oper: OperatingConditions, sdiv=20) -> BemSolution:
     local_bem_sol_list = np.zeros(r_dist.shape, dtype=LocalBemSolution)
 
     for i, (r, dr) in enumerate(zip(r_dist, dr_dist)):
-        local_bem_sol_list[i] = local_bem(prop, oper, Location(r, dr))
+        local_bem_sol_list[i] = local_bem(prop, oper, Location(r, dr), **local_bem_kwargs)
 
     return BemSolution(lsols=local_bem_sol_list)

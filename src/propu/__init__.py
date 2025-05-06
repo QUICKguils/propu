@@ -1,6 +1,4 @@
-"""
-Aerospace Propulsion computer code
-==================================
+"""Aerospace Propulsion computer code.
 
 This python package holds all the computer code written
 as part of the Aerospace Propulsion course (AERO0014).
@@ -20,10 +18,11 @@ bemt         -- Blade element momentum techniques.
 turbine      -- Gas turbine analyses.
 """
 
-import pathlib as _pathlib
+import pathlib
 
 from propu import mplrc
 
-ROOT_PATH = _pathlib.Path(__file__).parent.parent.parent
+_ROOT_PATH = pathlib.Path(__file__).parent.parent.parent
+_SRC_PATH  = pathlib.Path(__file__).parent
 
 mplrc.load_rcparams()

@@ -8,4 +8,4 @@ advance velocity.
 
 def main():
     """Execute the fourth part of the project."""
-    return None
+    pass
