@@ -11,8 +11,10 @@ import numpy as np
 
 from propu import bemt
 from propu.constant import uconv
-from propu.isatmosphere import get_state
 from propu.project import statement as stm
+
+V_IMPOSED = 15  # [m/s]
+DRAG_IMPOSED = 11  # [N]
 
 
 class Performance(NamedTuple):
@@ -29,7 +31,6 @@ class SolvedPoint(NamedTuple):
 
 
 class Solution(NamedTuple):
-    """Associate a propeller to its computed performances."""
     prop: bemt.Propeller
     perf: Performance
     solved_point: SolvedPoint
@@ -46,25 +47,22 @@ def main(*, out_enabled=True) -> dict[str, Solution]:
         sol_dict[prop.keyword] = Solution(prop=prop, perf=perf, solved_point=solved_point)
 
     if out_enabled:
+        display_solution(sol_dict)
         plot_solution(sol_dict)
 
     return sol_dict
 
 
 def get_operating_conditions(prop: bemt.Propeller, J: float) -> bemt.OperatingConditions:
-    rho, _, _, _ = get_state(0)  # Density of the air at sea level [kg/m³]
-    mu = 17.89e-6  # Dynamic viscosity of the air [Pa*s]
-    v_inf = 15  # Wind speed [m/s]
     D = 2 * prop.geometry.span
-    Om = v_inf / J / D * uconv("rps", "rad/s")
-    return bemt.OperatingConditions(Om=Om, v_inf=v_inf, rho=rho, mu=mu)
+    Om = V_IMPOSED / J / D * uconv("rps", "rad/s")
+    return bemt.OperatingConditions(Om=Om, v_inf=V_IMPOSED, rho=stm.rho, mu=stm.mu)
 
 
-def compute_performance(prop: bemt.Propeller) -> Performance:
+def compute_performance(prop: bemt.Propeller, J_range=np.linspace(0.2, 0.8, 30)) -> Performance:
     # NOTE:
     # APC recommends a max rpm of 150_000/D for the thin electric series,
     # where D is the diameter in inches.
-    J_range = np.linspace(0.2, 1.2, 30)  # TODO: maybe pass this as argument
     eta = np.zeros(J_range.shape)
     drag = np.zeros(J_range.shape)
     converged = np.zeros(J_range.shape, dtype=bool)
@@ -87,8 +85,6 @@ def compute_performance(prop: bemt.Propeller) -> Performance:
 
 
 def compute_solved_point(prop: bemt.Propeller, perf: Performance) -> SolvedPoint:
-    DRAG_IMPOSED = 11  # [N]
-
     # First solution approximation
     # See this as a small minimization-like problem: f(x) = 0
     # -> solution correspond to the argmin of f(J) := drag(J) - DRAG_IMPOSED
@@ -97,7 +93,7 @@ def compute_solved_point(prop: bemt.Propeller, perf: Performance) -> SolvedPoint
 
     # More refined solution
     # Perform a simple bissection in the neighborhood of the first approx.
-    J_bounds = [perf.J[arg_aprox-1], perf.J[arg_aprox+1]]
+    J_bounds = [perf.J[arg_aprox - 1], perf.J[arg_aprox + 1]]  # FIX: can be out of array bounds
     max_iter = 10
     atol = 1e-4
     rtol = 1e-3
@@ -125,6 +121,18 @@ def compute_solved_point(prop: bemt.Propeller, perf: Performance) -> SolvedPoint
     return SolvedPoint(J=float(J), eta=float(bem_sol.eta), drag=float(drag))
 
 
+def display_solution(sol_dict: dict[str, Solution]) -> None:
+    """Pretty-print the computed solutions."""
+    print(f"Part3 solution (drag: {DRAG_IMPOSED} N, v_inf: {V_IMPOSED} m/s)")
+    for _, sol in sol_dict.items():
+        print(
+            f"Propeller: {sol.prop.pretty_name}",
+            f"    Advance ratio: {sol.solved_point.J:.2f}",
+            f"    Efficiency: {(sol.solved_point.eta * 1e2):.2f} %",
+            sep="\n",
+        )
+
+
 def plot_solution(sol_dict: dict[str, Solution]) -> None:
     """Plot the computed solutions.
 
@@ -133,6 +141,7 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
     """
     import matplotlib.pyplot as plt
     from propu.mplrc import REPORT_TW
+
     fig, (ax_eta, ax_drag) = plt.subplots(2, 1, figsize=(REPORT_TW, REPORT_TW))
 
     def plot(sol: Solution):
@@ -140,42 +149,35 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
         (prop, perf, solved_point) = sol
 
         # Propulsive efficiencies
-        eta_line, = ax_eta.plot(
+        (eta_line,) = ax_eta.plot(
             perf.J[perf.converged], perf.eta[perf.converged],
-            linestyle="solid", linewidth=0.8,
-            label=f"{prop.pretty_name}",
+            linestyle="solid", linewidth=0.8, label=f"{prop.pretty_name}",
         )
-        # ax_eta.scatter(
-        #     perf.J[perf.converged], perf.eta[perf.converged],
-        #     s=30, zorder=2.5, marker=".", color=eta_line.get_color(),
-        # )
-        # ax_eta.scatter(
-        #     perf.J[~perf.converged], perf.eta[~perf.converged],
-        #     s=30, zorder=2.5, marker="x", color=eta_line.get_color(),
-        # )
+        ax_eta.scatter(
+            perf.J[~perf.converged], perf.eta[~perf.converged],
+            s=10, zorder=2.5, marker="x", color=eta_line.get_color(),
+        )
         ax_eta.scatter(
             solved_point.J, solved_point.eta,
-            s=30, zorder=2.5, marker="x", color=eta_line.get_color(),
+            s=20, zorder=2.5, marker="+", color=eta_line.get_color(),
         )
         ax_eta.set_xlabel(r"$J$")
         ax_eta.set_ylabel(r"$\eta_p$")
 
-        # Total drag on the propeller
-        drag_line, = ax_drag.plot(
-            perf.J[perf.converged], perf.drag[perf.converged],
-            linestyle="solid", linewidth=0.8,
+        # Drag on the propeller
+        (drag_line,) = ax_drag.plot(
+            perf.J[perf.converged],
+            perf.drag[perf.converged],
+            linestyle="solid",
+            linewidth=0.8,
         )
-        # ax_drag.scatter(
-        #     perf.J[perf.converged], perf.drag[perf.converged],
-        #     s=30, zorder=2.5, marker=".", color=drag_line.get_color(),
-        # )
-        # ax_drag.scatter(
-        #     perf.J[~perf.converged], perf.drag[~perf.converged],
-        #     s=30, zorder=2.5, marker="x", color=drag_line.get_color(),
-        # )
+        ax_drag.scatter(
+            perf.J[~perf.converged], perf.drag[~perf.converged],
+            s=10, zorder=2.5, marker="x", color=drag_line.get_color(),
+        )
         ax_drag.scatter(
             solved_point.J, solved_point.drag,
-            s=30, zorder=2.5, marker="x", color=drag_line.get_color(),
+            s=20, zorder=2.5, marker="+", color=drag_line.get_color(),
         )
         ax_drag.set_xlabel(r"$J$")
         ax_drag.set_ylabel(r"$D$ (N)")
@@ -183,5 +185,5 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
     for _, sol in sol_dict.items():
         plot(sol)
 
-    fig.legend(loc='outside upper center', ncols=4)
+    fig.legend(loc="outside upper center", ncols=4)
     fig.show()

@@ -6,9 +6,13 @@ import numpy as np
 
 from propu import bemt
 from propu.constant import uconv
+from propu.isatmosphere import get_state
 
 _PROJECT_PATH = pathlib.Path(__file__).parent
 _DATA_PATH = _PROJECT_PATH / "res"
+
+rho = get_state(0)[0]  # Density of the air at sea level [kg/m³]
+mu = 17.89e-6  # Dynamic viscosity of the air [Pa*s]
 
 airfoil = bemt.Airfoil(
     profile = np.loadtxt(str(_DATA_PATH / "clarky" / "profile.dat"), skiprows=1),
