@@ -31,7 +31,7 @@ import propu
 # Example 1
 # Run the second part of the project
 from propu.project import part2
-(J, C_T, C_P, eta) = part2.main()
+sol = part2.main()
 
 # Example 2
 # Run the second question of the exam
