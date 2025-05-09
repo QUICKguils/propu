@@ -1,4 +1,4 @@
-"""Code developed to answer the first question of the exam."""
+"""Answer the first question of the exam."""
 
 
 def main():

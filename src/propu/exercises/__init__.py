@@ -1,9 +1,8 @@
-"""
-Collection of solved exercises
-==============================
+"""Collection of solved exercises.
 
-Submodules
-----------
+Each exercise is solved in a separate module,
+and each of these modules contain a ``main`` function
+that lauches the resolution of the underlying exercise.
 """
 
 __all__ = [

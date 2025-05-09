@@ -42,7 +42,7 @@ sol = question2.main()
 # Get the air density at 30_000 ft.
 from propu.constant import uconv
 from propu.isatmosphere import get_state
-rho, _, _, _ = get_state(30_000 * uconv("ft", "m"))
+rho = get_state(30_000 * uconv("ft", "m")).rho
 ```
 
 ## Project architecture
