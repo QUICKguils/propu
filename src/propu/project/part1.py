@@ -13,13 +13,13 @@ from propu.constant import uconv
 from propu.project import statement as stm
 
 V_IMPOSED = 20  # [m/s]
-RPM_IMPOSED = 9000  # [rpm]
+OM_IMPOSED = 9000 * uconv("rpm", "rad/s")
 
 
 def main(*, out_enabled=True) -> dict[str, bemt.BemSolution]:
     """Execute the first part of the project."""
     sol_dict = dict()
-    oper = get_operating_conditions()
+    oper = bemt.OperatingConditions(Om=OM_IMPOSED, v_inf=V_IMPOSED, rho=stm.rho, mu=stm.mu)
 
     for Propeller in stm.APCPropellers:
         prop = Propeller()
@@ -32,15 +32,9 @@ def main(*, out_enabled=True) -> dict[str, bemt.BemSolution]:
     return sol_dict
 
 
-def get_operating_conditions() -> bemt.OperatingConditions:
-    """Get the operating conditions, as specified in the statement."""
-    Om = RPM_IMPOSED * uconv("rpm", "rad/s")  # Rotation speed [rad/s]
-    return bemt.OperatingConditions(Om=Om, v_inf=V_IMPOSED, rho=stm.rho, mu=stm.mu)
-
-
 def display_solution(sol_dict: dict[str, bemt.BemSolution]) -> None:
     """Pretty-print the computed solutions."""
-    print(f"Part1 solution (Rot. speed: {RPM_IMPOSED} rpm, v_inf: {V_IMPOSED} m/s)")
+    print(f"Part1 solution (Rot. speed: {OM_IMPOSED * uconv('rad/s', 'rpm')} rpm, v_inf: {V_IMPOSED} m/s)")
     for _, sol in sol_dict.items():
         print(
             f"Propeller: {sol.prop.pretty_name}",

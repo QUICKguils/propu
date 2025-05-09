@@ -1,7 +1,7 @@
 import numpy as np
 
-from propu import isatmosphere as isa
 from propu.constant import uconv
+from propu.isatmosphere import get_state
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
     # Statement data
     disk_loading = 11.4 * uconv("psf", "Pa")
     v_inf = 80 * uconv("knot", "m/s")
-    rho_sl, _, _, _ = isa.get_state(0)
+    rho_sl = get_state(0).rho
 
     # Resolution
     # NOTE: this commented eta_p is not exact (see personnal notes)

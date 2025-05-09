@@ -1,5 +1,7 @@
 """International Standard Atmosphere."""
 
+from typing import NamedTuple
+
 import numpy as np
 
 from propu import constant as c
@@ -57,6 +59,13 @@ def get_state(height: float) -> tuple[float, float, float, float]:
         6   71000  3.95642  214.65   -0.002
     ===== ======= ======== ======= =========
     """
+
+    class State(NamedTuple):
+        rho: float
+        p: float
+        T: float
+        a: float
+
     if 0 <= height < 11_000:  # Troposphere
         alpha = -0.0065  # [K/m]
         T0 = 288.15  # [K]
@@ -121,5 +130,4 @@ def get_state(height: float) -> tuple[float, float, float, float]:
     rho = p / (c.R_air * T)
     a = np.sqrt(c.gamma_air * c.R_air * T)
 
-    state = (rho, p, T, a)
-    return tuple(float(s) for s in state)
+    return State(rho=float(rho), p=float(p), T=float(T), a=float(a))

@@ -1,5 +1,5 @@
-from propu import isatmosphere as isa
 from propu.constant import uconv
+from propu.isatmosphere import get_state
 
 
 def main():
@@ -8,7 +8,7 @@ def main():
     # Statement data
     n_blades = 3
     diameter = 1750 * uconv("mm", "m")
-    rho, p, T, a = isa.get_state(0)
+    rho, p, T, a = get_state(0)
     thrust = 1700  # [N]
     v_inf = 150 * uconv("km/hr", "m/s")
 

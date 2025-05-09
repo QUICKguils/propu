@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
 
-from propu import isatmosphere as isa
 from propu.constant import uconv
+from propu.isatmosphere import get_state
 
 
 def main():
@@ -11,7 +11,7 @@ def main():
 
     # Statement data
     power = 115 * uconv("hp", "W")
-    rho, _, _, _ = isa.get_state(0)
+    rho = get_state(0).rho
     diameter = 6 * uconv("ft", "m")
 
     # Resolution
