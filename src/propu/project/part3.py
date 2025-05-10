@@ -8,6 +8,7 @@ What is the propulsive efficiency of the propeller in these conditions?
 from typing import NamedTuple
 
 import numpy as np
+from numpy.typing import NDArray
 
 from propu import bemt
 from propu.constant import uconv
@@ -18,16 +19,16 @@ DRAG_IMPOSED = 11  # [N]
 
 
 class Performance(NamedTuple):
-    J: np.ndarray[float]
-    eta: np.ndarray[float]
-    drag: np.ndarray[float]
-    converged: np.ndarray[bool]
+    J: NDArray[np.float64]
+    drag: NDArray[np.float64]
+    eta: NDArray[np.float64]
+    converged: NDArray[np.bool]
 
 
 class SolvedPoint(NamedTuple):
     J: float
-    eta: float
     drag: float
+    eta: float
 
 
 class Solution(NamedTuple):
@@ -40,8 +41,7 @@ def main(*, out_enabled=True) -> dict[str, Solution]:
     """Execute the third part of the project."""
     sol_dict = dict()
 
-    for Propeller in stm.APCPropellers:
-        prop = Propeller()
+    for prop in stm.propellers:
         perf = compute_performance(prop)
         solved_point = compute_solved_point(prop, perf)
         sol_dict[prop.keyword] = Solution(prop=prop, perf=perf, solved_point=solved_point)
@@ -98,7 +98,7 @@ def compute_solved_point(prop: bemt.Propeller, perf: Performance) -> SolvedPoint
     atol = 1e-4
     rtol = 1e-3
     has_converged = False
-    for n_iter in range(1, max_iter + 1):
+    for _ in range(1, max_iter + 1):
         oper = get_operating_conditions(prop, J)
         bem_sol = bemt.bem(prop, oper)
         drag = bem_sol.thrust
@@ -146,38 +146,36 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
 
     def plot(sol: Solution):
         """Plot the solutions of this project part."""
-        (prop, perf, solved_point) = sol
-
         # Propulsive efficiencies
         (eta_line,) = ax_eta.plot(
-            perf.J[perf.converged], perf.eta[perf.converged],
-            linestyle="solid", linewidth=0.8, label=f"{prop.pretty_name}",
+            sol.perf.J[sol.perf.converged], sol.perf.eta[sol.perf.converged],
+            linestyle="solid", linewidth=0.8, label=f"{sol.prop.pretty_name}",
         )
         ax_eta.scatter(
-            perf.J[~perf.converged], perf.eta[~perf.converged],
-            s=10, zorder=2.5, marker="x", color=eta_line.get_color(),
+            sol.perf.J[~sol.perf.converged], sol.perf.eta[~sol.perf.converged],
+            s=15, linewidths=1, zorder=2.5, marker="x", color=eta_line.get_color(),
         )
         ax_eta.scatter(
-            solved_point.J, solved_point.eta,
-            s=20, zorder=2.5, marker="+", color=eta_line.get_color(),
+            sol.solved_point.J, sol.solved_point.eta,
+            s=20, linewidths=1, zorder=2.5, marker="+", color=eta_line.get_color(),
         )
         ax_eta.set_xlabel(r"$J$")
         ax_eta.set_ylabel(r"$\eta_p$")
 
         # Drag on the propeller
         (drag_line,) = ax_drag.plot(
-            perf.J[perf.converged],
-            perf.drag[perf.converged],
+            sol.perf.J[sol.perf.converged],
+            sol.perf.drag[sol.perf.converged],
             linestyle="solid",
             linewidth=0.8,
         )
         ax_drag.scatter(
-            perf.J[~perf.converged], perf.drag[~perf.converged],
-            s=10, zorder=2.5, marker="x", color=drag_line.get_color(),
+            sol.perf.J[~sol.perf.converged], sol.perf.drag[~sol.perf.converged],
+            s=15, linewidths=1, zorder=2.5, marker="x", color=drag_line.get_color(),
         )
         ax_drag.scatter(
-            solved_point.J, solved_point.drag,
-            s=20, zorder=2.5, marker="+", color=drag_line.get_color(),
+            sol.solved_point.J, sol.solved_point.drag,
+            s=20, linewidths=1, zorder=2.5, marker="+", color=drag_line.get_color(),
         )
         ax_drag.set_xlabel(r"$J$")
         ax_drag.set_ylabel(r"$D$ (N)")

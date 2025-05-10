@@ -10,6 +10,7 @@ import re
 from typing import NamedTuple
 
 import numpy as np
+from numpy.typing import NDArray
 
 from propu import bemt
 from propu.constant import uconv
@@ -28,10 +29,10 @@ MEASUREMENTS = [
 
 
 class Performance(NamedTuple):
-    J: np.ndarray[float]
-    CT: np.ndarray[float]
-    CP: np.ndarray[float]
-    eta: np.ndarray[float]
+    J: NDArray[np.float64]
+    CT: NDArray[np.float64]
+    CP: NDArray[np.float64]
+    eta: NDArray[np.float64]
 
 
 class Solution(NamedTuple):
@@ -39,7 +40,7 @@ class Solution(NamedTuple):
     Om: float
     measured: Performance
     computed: Performance
-    converged: np.ndarray[bool]
+    converged: NDArray[np.bool]
 
 
 def main(*, out_enabled=True) -> dict[str, Solution]:
@@ -69,7 +70,7 @@ def extract_apc_data(fname: str) -> tuple[str, float, Performance]:
 
 def compute_performance(fname: str) -> Solution:
     (prop_keyword, rpm, perf_measured) = extract_apc_data(fname)
-    prop = stm.create_apc_propeller(prop_keyword)
+    prop = stm.get_apc_propeller(prop_keyword)
 
     n = rpm * uconv("rpm", "rps")
     Om = rpm * uconv("rpm", "rad/s")
@@ -111,24 +112,23 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
 
     def plot(sol: Solution):
         """Plot the solutions of this project part."""
-        (prop, Om, measured, computed, converged) = sol
-        rpm = Om * uconv("rad/s", "rpm")
+        rpm = sol.Om * uconv("rad/s", "rpm")
 
         # Thrust coefficients
         (computed_CT_line,) = axs["CT"].plot(
-            computed.J, computed.CT,
+            sol.computed.J, sol.computed.CT,
             linestyle="solid", linewidth=0.8,
         )
         axs["CT"].scatter(
-            computed.J[converged], computed.CT[converged],
+            sol.computed.J[sol.converged], sol.computed.CT[sol.converged],
             s=15, linewidths=1, zorder=2.5, marker=".", color=computed_CT_line.get_color(),
         )
         axs["CT"].scatter(
-            computed.J[~converged], computed.CT[~converged],
+            sol.computed.J[~sol.converged], sol.computed.CT[~sol.converged],
             s=15, linewidths=1, zorder=2.5, marker="x", color=computed_CT_line.get_color(),
         )
         axs["CT"].scatter(
-            measured.J, measured.CT,
+            sol.measured.J, sol.measured.CT,
             s=15, linewidths=1, zorder=2.5, marker="+", color=computed_CT_line.get_color(),
         )
 
@@ -137,19 +137,19 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
 
         # Power coefficients
         (computed_CP_line,) = axs["CP"].plot(
-            computed.J, computed.CP,
+            sol.computed.J, sol.computed.CP,
             linestyle="solid", linewidth=0.8,
         )
         axs["CP"].scatter(
-            computed.J[converged], computed.CP[converged],
+            sol.computed.J[sol.converged], sol.computed.CP[sol.converged],
             s=15, linewidths=1, zorder=2.5, marker=".", color=computed_CP_line.get_color(),
         )
         axs["CP"].scatter(
-            computed.J[~converged], computed.CP[~converged],
+            sol.computed.J[~sol.converged], sol.computed.CP[~sol.converged],
             s=15, linewidths=1, zorder=2.5, marker="x", color=computed_CP_line.get_color(),
         )
         axs["CP"].scatter(
-            measured.J, measured.CP,
+            sol.measured.J, sol.measured.CP,
             s=15, linewidths=1, zorder=2.5, marker="+", color=computed_CP_line.get_color(),
         )
         axs["CP"].set_xlabel(r"$J$")
@@ -157,19 +157,19 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
 
         # Propulsive efficiencies
         (computed_eta_line,) = axs["eta"].plot(
-            computed.J, computed.eta,
-            linestyle="solid", linewidth=0.8, label=f"{prop.pretty_name} @ {rpm:.0f} rpm",
+            sol.computed.J, sol.computed.eta,
+            linestyle="solid", linewidth=0.8, label=f"{sol.prop.pretty_name} @ {rpm:.0f} rpm",
         )
         axs["eta"].scatter(
-            computed.J[converged], computed.eta[converged],
+            sol.computed.J[sol.converged], sol.computed.eta[sol.converged],
             s=15, linewidths=1, zorder=2.5, marker=".", color=computed_eta_line.get_color(),
         )
         axs["eta"].scatter(
-            computed.J[~converged], computed.eta[~converged],
+            sol.computed.J[~sol.converged], sol.computed.eta[~sol.converged],
             s=15, linewidths=1, zorder=2.5, marker="x", color=computed_eta_line.get_color(),
         )
         axs["eta"].scatter(
-            measured.J[measured.eta > 0], measured.eta[measured.eta > 0],
+            sol.measured.J[sol.measured.eta > 0], sol.measured.eta[sol.measured.eta > 0],
             s=15, linewidths=1, zorder=2.5, marker="+", color=computed_eta_line.get_color(),
         )
         axs["eta"].set_xlabel(r"$J$")

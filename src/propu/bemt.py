@@ -1,9 +1,9 @@
 """Blade element momentum techniques."""
 
-import abc
 from typing import NamedTuple
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy import interpolate
 
 from propu.constant import uconv
@@ -15,69 +15,42 @@ class Airfoil(NamedTuple):
     Contain the tabulated coordinates of the airfoil profile, as well as the tabulated values of cl
     and cd, for the corresponding sampled angles of attack and Reynolds numbers.
     """
-    profile: np.ndarray[float]  # Sample of airfoil coordinates [m]
-    aoa: np.ndarray[float]  # Sample of angles of attack [rad]
-    Re: np.ndarray[float]  # Sample of Reynolds numbers [-]
-    cl: np.ndarray[float]  # Corresponding lift coefficients [-]
-    cd: np.ndarray[float]  # Corresponding drag coefficients [-]
+
+    profile: NDArray[np.float64]  # Sample of airfoil coordinates [m]
+    aoa: NDArray[np.float64]  # Sample of angles of attack [rad]
+    Re: NDArray[np.float64]  # Sample of Reynolds numbers [-]
+    cl: NDArray[np.float64]  # Corresponding lift coefficients [-]
+    cd: NDArray[np.float64]  # Corresponding drag coefficients [-]
 
 
 class PropellerGeometry(NamedTuple):
-    """Geometric description of a propeller."""
     span: float  # Span of one blade [m]
     n_blades: int  # Number of blades [-]
-    stations: np.ndarray[float]  # Station locations [m]
-    chords: np.ndarray[float]  # Chords evaluated at stations [m]
-    pitches: np.ndarray[float]  # Pitches evaluated at stations [m]
+    stations: NDArray[np.float64]  # Station locations [m]
+    chords: NDArray[np.float64]  # Chords evaluated at stations [m]
+    pitches: NDArray[np.float64]  # Pitches evaluated at stations [m]
 
 
-class Propeller(abc.ABC):
-    """Abstract base class to model a generic propeller.
+class Propeller(NamedTuple):
+    """Specifications of a generic propeller.
 
-    The user can create concrete propellers that derive from this base class, as long as it
-    satisfies this interface. That is, as long as it has the following properties:
-        keyword : str
-            The reference name of the concrete propeller. This can be used as a
-            keyword by the creator, to instantiate the propeller.
-        pretty_name: str
-            The well-formatted name of the concrete propeller. This can be
-            used, for example, when printing results or in plot legends.
-        airfoil: AirfoilPolar
-            Tabulated airfoil polar data.
-        geometry: PropellerGeometry
-            Geometric description of a propeller.
-
-    Notes
-    -----
-    Using a factory pattern may be a bit overengineered here, given the limited size of the code.
-    However, it allows the bemt module to be uncoupled from the concrete propellers that can be
-    abitrary defined elsewhere, thus making this module more flexible.
-    See for example the propu.project.statement module for a concrete usage of this factory pattern,
-    applied to APC propellers.
-
-    More concretely, the author choose to use a factory pattern for the propellers mainly because it
-    constitutes a good object-oriented programming excercise.
+    Attributes
+    ----------
+    keyword : str
+       The reference name of the concrete propeller. This can be used as a
+       keyword by the creator, to instantiate the propeller.
+    pretty_name: str
+       The well-formatted name of the concrete propeller. This can be
+       used, for example, when printing results or in plot legends.
+    airfoil: AirfoilPolar
+       Tabulated airfoil polar data.
+    geometry: PropellerGeometry
+       Geometric description of a propeller.
     """
-
-    @property
-    @abc.abstractmethod
-    def keyword() -> str:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def pretty_name() -> str:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def airfoil() -> Airfoil:
-        pass
-
-    @property
-    @abc.abstractmethod
-    def geometry() -> PropellerGeometry:
-        pass
+    keyword: str
+    pretty_name: str
+    airfoil: Airfoil
+    geometry: PropellerGeometry
 
 
 class OperatingConditions(NamedTuple):
@@ -88,7 +61,6 @@ class OperatingConditions(NamedTuple):
 
 
 class Location(NamedTuple):
-    """Radial location of one blade element."""
     r: float  # Radial location of the blade element centroid [m]
     dr: float  # Width of the stream tube [m]
 
@@ -110,7 +82,7 @@ class LocalBemSolution(NamedTuple):
 
 
 class BemSolution:
-    def __init__(self, lsols: np.ndarray[LocalBemSolution]):
+    def __init__(self, lsols: NDArray[LocalBemSolution]):
         # Context
         self.prop = lsols[0].prop  # Which propeller is used ?
         self.oper = lsols[0].oper  # Under what operating conditions ?
@@ -166,11 +138,11 @@ def local_bem(
     # Linear interpolator methods for lift and drag coefficients
     cl_lerp = interpolate.RegularGridInterpolator(
         (prop.airfoil.aoa, prop.airfoil.Re), prop.airfoil.cl,
-        bounds_error=False, fill_value=None
+        bounds_error=False, fill_value=None,
     )
     cd_lerp = interpolate.RegularGridInterpolator(
         (prop.airfoil.aoa, prop.airfoil.Re), prop.airfoil.cd,
-        bounds_error=False, fill_value=None
+        bounds_error=False, fill_value=None,
     )
 
     # Initial guesstimates and iteration parameters
@@ -202,7 +174,7 @@ def local_bem(
         # Momentum balance on the streamtube,
         # leading to new estimates of the absolute velocity components
         thrust = -prop.geometry.n_blades * (lift * np.sin(beta) + drag * np.cos(beta))
-        torque =  prop.geometry.n_blades * (lift * np.cos(beta) - drag * np.sin(beta)) * loc.r
+        torque = prop.geometry.n_blades * (lift * np.cos(beta) - drag * np.sin(beta)) * loc.r
         mass_flow = 2 * np.pi * loc.r * loc.dr * oper.rho * va2
         va3_new = oper.v_inf + thrust / mass_flow
         vu2p_new = torque / (mass_flow * loc.r)
@@ -216,14 +188,14 @@ def local_bem(
 
         # Otherwise update the speeds for the next iteration
         vu2p = (1 - relax) * vu2p + relax * vu2p_new
-        va3  = (1 - relax) * va3  + relax * va3_new
+        va3 = (1 - relax) * va3 + relax * va3_new
 
     if not converged:
         print(
             f"bemt -- No local convergence after {n_iter} iterations."
             f"\n\tpropeller: {prop.pretty_name}"
             f" -- radius: {loc.r:.4f} m"
-            f" -- rotation: {oper.Om*uconv("rad/s", "rpm"):.0f} rpm"
+            f" -- rotation: {oper.Om * uconv('rad/s', 'rpm'):.0f} rpm"
         )
 
     return LocalBemSolution(

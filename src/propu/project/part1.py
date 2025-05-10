@@ -18,11 +18,10 @@ OM_IMPOSED = 9000 * uconv("rpm", "rad/s")
 
 def main(*, out_enabled=True) -> dict[str, bemt.BemSolution]:
     """Execute the first part of the project."""
-    sol_dict = dict()
+    sol_dict: dict[str, bemt.BemSolution] = dict()
     oper = bemt.OperatingConditions(Om=OM_IMPOSED, v_inf=V_IMPOSED, rho=stm.rho, mu=stm.mu)
 
-    for Propeller in stm.APCPropellers:
-        prop = Propeller()
+    for prop in stm.propellers:
         sol_dict[prop.keyword] = bemt.bem(prop, oper)
 
     if out_enabled:
@@ -34,7 +33,11 @@ def main(*, out_enabled=True) -> dict[str, bemt.BemSolution]:
 
 def display_solution(sol_dict: dict[str, bemt.BemSolution]) -> None:
     """Pretty-print the computed solutions."""
-    print(f"Part1 solution (Rot. speed: {OM_IMPOSED * uconv('rad/s', 'rpm')} rpm, v_inf: {V_IMPOSED} m/s)")
+    print(
+        "Part 1 solution"
+        f" (Rot. speed: {OM_IMPOSED * uconv('rad/s', 'rpm'):.0f} rpm,"
+        f" v_inf: {V_IMPOSED} m/s)"
+    )
     for _, sol in sol_dict.items():
         print(
             f"Propeller: {sol.prop.pretty_name}",
