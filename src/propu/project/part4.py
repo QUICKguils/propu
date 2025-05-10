@@ -1,8 +1,7 @@
 """Code developed to answer the fourth part of the project.
 
-For the latter configuration, investigate strategies to maintain a constant
-rotational velocity of 8000 RPM with a fixed power input of 0.31 hp and varying
-advance velocity.
+For the latter configuration, investigate strategies to maintain a constant rotational velocity of
+8000 RPM with a fixed power input of 0.31 hp and varying advance velocity.
 """
 
 from typing import NamedTuple
@@ -16,7 +15,7 @@ from propu.project import statement as stm
 
 OM_IMPOSED = 8000 * uconv("rpm", "rad/s")
 P_IMPOSED = 0.31 * uconv("hp", "W")
-PROP_IMPOSED_KW = "apce_11x7"  # As determined in part3
+KEYWORD_PROP_IMPOSED = "apce_11x7"  # As determined in part3
 
 
 def create_variable_APC(theta: float) -> bemt.Propeller:
@@ -29,23 +28,22 @@ def create_variable_APC(theta: float) -> bemt.Propeller:
 
     Notes
     -----
-    The function uses the APC propeller already instantiated
-    in the statement, to avoid the heavy computations
-    of reading each time the data files in stm._DATA_PATH.
+    The function uses the APC propeller already instantiated in the statement,
+    to avoid the heavy computations of reading each time the data files in stm._DATA_PATH.
     """
-    apc_11x7 = stm.get_apc_propeller(PROP_IMPOSED_KW)
+    apc_11x7 = stm.get_apc_propeller(KEYWORD_PROP_IMPOSED)
     geometry = bemt.PropellerGeometry(
         span=apc_11x7.geometry.span,
         n_blades=apc_11x7.geometry.n_blades,
         stations=apc_11x7.geometry.stations,
         chords=apc_11x7.geometry.chords,
-        pitches=apc_11x7.geometry.pitches + theta
+        pitches=apc_11x7.geometry.pitches + theta,
     )
     return bemt.Propeller(
         keyword=apc_11x7.keyword,
         pretty_name=apc_11x7.pretty_name,
         airfoil=apc_11x7.airfoil,
-        geometry=geometry
+        geometry=geometry,
     )
 
 
@@ -53,28 +51,28 @@ class SolvedPoint(NamedTuple):
     J: float
     power: float
     theta: float
-    has_converged: bool
+    converged: bool
 
 
 class Solution(NamedTuple):
     J: NDArray[np.float64]
     power: NDArray[np.float64]
     theta: NDArray[np.float64]
-    has_converged: NDArray[np.bool]
+    converged: NDArray[np.bool]
 
 
 def main(*, out_enabled=True) -> Solution:
     """Execute the fourth part of the project."""
-    J_range=np.linspace(0.2, 1.0, 20)
-    power_range=np.zeros(J_range.shape)
-    theta_range=np.zeros(J_range.shape)
-    has_converged=np.zeros(J_range.shape, dtype=np.bool)
+    J_range = np.linspace(0.2, 1.0, 20)
+    power_range = np.zeros(J_range.shape)
+    theta_range = np.zeros(J_range.shape)
+    converged = np.zeros(J_range.shape, dtype=np.bool)
     for i, J in enumerate(J_range):
         solved_point = compute_solved_point(J)
         power_range[i] = solved_point.power
         theta_range[i] = solved_point.theta
-        has_converged[i] = solved_point.has_converged
-    sol = Solution(J=J_range, power=power_range, theta=theta_range, has_converged=has_converged)
+        converged[i] = solved_point.converged
+    sol = Solution(J=J_range, power=power_range, theta=theta_range, converged=converged)
 
     if out_enabled:
         plot_solution(sol)
@@ -83,7 +81,7 @@ def main(*, out_enabled=True) -> Solution:
 
 
 def get_operating_conditions(J: float) -> bemt.OperatingConditions:
-    D = 2 * stm.get_apc_propeller(PROP_IMPOSED_KW).geometry.span
+    D = 2 * stm.get_apc_propeller(KEYWORD_PROP_IMPOSED).geometry.span
     v_inf = J * D * OM_IMPOSED * uconv("rad/s", "rps")
     return bemt.OperatingConditions(Om=OM_IMPOSED, v_inf=v_inf, rho=stm.rho, mu=stm.mu)
 
@@ -96,7 +94,7 @@ def compute_solved_point(J: float, thetad_bounds=[0, 20]):
     #   f(theta) = 0, where f(theta) := power(theta) - P_IMPOSED.
     max_iter = 15
     rtol = 1e-3
-    has_converged = False
+    converged = False
     for _ in range(1, max_iter + 1):
         theta = np.mean(theta_bounds)
         prop = create_variable_APC(theta)
@@ -105,7 +103,7 @@ def compute_solved_point(J: float, thetad_bounds=[0, 20]):
 
         # Stop the iterations if the power is close enough to the imposed one
         if np.allclose(power, P_IMPOSED, rtol=rtol):
-            has_converged = True
+            converged = True
             break
 
         # Bissection update
@@ -114,7 +112,7 @@ def compute_solved_point(J: float, thetad_bounds=[0, 20]):
         else:
             theta_bounds[0] = theta
 
-    return SolvedPoint(J=J, power=power, theta=theta, has_converged=has_converged)
+    return SolvedPoint(J=J, power=power, theta=theta, converged=converged)
 
 
 def plot_solution(sol: Solution) -> None:
@@ -124,17 +122,18 @@ def plot_solution(sol: Solution) -> None:
     to ensure their idempotence through multiple plot calls.
     """
     import matplotlib.pyplot as plt
+    from propu.mplrc import REPORT_TW
 
     thetad = np.rad2deg(sol.theta)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(0.5*REPORT_TW, 0.5*REPORT_TW))
     (line,) = ax.plot(sol.J, thetad, linestyle="solid", linewidth=0.8)
     ax.scatter(
-        sol.J[sol.has_converged], thetad[sol.has_converged],
+        sol.J[sol.converged], thetad[sol.converged],
         s=15, linewidths=1, zorder=2.5, marker=".", color=line.get_color(),
     )
     ax.scatter(
-        sol.J[~sol.has_converged], thetad[~sol.has_converged],
+        sol.J[~sol.converged], thetad[~sol.converged],
         s=15, linewidths=1, zorder=2.5, marker="x", color=line.get_color(),
     )
     ax.set_xlabel(r"$J$")
@@ -144,5 +143,5 @@ def plot_solution(sol: Solution) -> None:
 
 
 def _get_v_inf(sol: Solution) -> NDArray:
-    D = 2 * stm.get_apc_propeller(PROP_IMPOSED_KW).geometry.span
+    D = 2 * stm.get_apc_propeller(KEYWORD_PROP_IMPOSED).geometry.span
     return sol.J * D * OM_IMPOSED * uconv("rad/s", "rps")

@@ -12,8 +12,9 @@ from propu.constant import uconv
 class Airfoil(NamedTuple):
     """Tabulated Airfoil data.
 
-    Contain the tabulated coordinates of the airfoil profile, as well as the tabulated values of cl
-    and cd, for the corresponding sampled angles of attack and Reynolds numbers.
+    Contain the tabulated coordinates of the airfoil profile,
+    as well as the tabulated values of cl and cd,
+    for the corresponding sampled angles of attack and Reynolds numbers.
     """
 
     profile: NDArray[np.float64]  # Sample of airfoil coordinates [m]
@@ -137,12 +138,16 @@ def local_bem(
 
     # Linear interpolator methods for lift and drag coefficients
     cl_lerp = interpolate.RegularGridInterpolator(
-        (prop.airfoil.aoa, prop.airfoil.Re), prop.airfoil.cl,
-        bounds_error=False, fill_value=None,
+        (prop.airfoil.aoa, prop.airfoil.Re),
+        prop.airfoil.cl,
+        bounds_error=False,
+        fill_value=None,
     )
     cd_lerp = interpolate.RegularGridInterpolator(
-        (prop.airfoil.aoa, prop.airfoil.Re), prop.airfoil.cd,
-        bounds_error=False, fill_value=None,
+        (prop.airfoil.aoa, prop.airfoil.Re),
+        prop.airfoil.cd,
+        bounds_error=False,
+        fill_value=None,
     )
 
     # Initial guesstimates and iteration parameters
@@ -202,7 +207,7 @@ def local_bem(
         prop=prop, oper=oper, loc=loc,
         va2=va2, vu2=vu2, wu2=wu2, beta=beta,
         thrust=thrust, torque=torque,
-        converged=converged,
+        converged=converged
     )
 
 

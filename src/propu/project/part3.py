@@ -97,7 +97,7 @@ def compute_solved_point(prop: bemt.Propeller, perf: Performance) -> SolvedPoint
     max_iter = 10
     atol = 1e-4
     rtol = 1e-3
-    has_converged = False
+    converged = False
     for _ in range(1, max_iter + 1):
         oper = get_operating_conditions(prop, J)
         bem_sol = bemt.bem(prop, oper)
@@ -105,7 +105,7 @@ def compute_solved_point(prop: bemt.Propeller, perf: Performance) -> SolvedPoint
 
         # Stop the iterations if the drag is close enough to the imposed one
         if np.allclose(drag, DRAG_IMPOSED, atol=atol, rtol=rtol):
-            has_converged = True
+            converged = True
             break
 
         # Bissection update
@@ -115,7 +115,7 @@ def compute_solved_point(prop: bemt.Propeller, perf: Performance) -> SolvedPoint
             J_bounds[-1] = J
         J = np.mean(J_bounds)
 
-    if not has_converged:
+    if not converged:
         print("yo seems the simple bissection is too wobbly wonky")
 
     return SolvedPoint(J=float(J), eta=float(bem_sol.eta), drag=float(drag))
@@ -140,6 +140,7 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
     to ensure their idempotence through multiple plot calls.
     """
     import matplotlib.pyplot as plt
+
     from propu.mplrc import REPORT_TW
 
     fig, (ax_eta, ax_drag) = plt.subplots(2, 1, figsize=(REPORT_TW, REPORT_TW))
@@ -164,10 +165,8 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
 
         # Drag on the propeller
         (drag_line,) = ax_drag.plot(
-            sol.perf.J[sol.perf.converged],
-            sol.perf.drag[sol.perf.converged],
-            linestyle="solid",
-            linewidth=0.8,
+            sol.perf.J[sol.perf.converged], sol.perf.drag[sol.perf.converged],
+            linestyle="solid", linewidth=0.8,
         )
         ax_drag.scatter(
             sol.perf.J[~sol.perf.converged], sol.perf.drag[~sol.perf.converged],

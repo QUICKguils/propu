@@ -17,7 +17,7 @@ def p_static2total(M, gamma):
 
 def mdot_chocking(pt, Tt, R, gamma, A):
     """Choking mass flow."""
-    return pt / np.sqrt(gamma*R*Tt) * (2/(gamma+1)) ** ((gamma+1)/2/(gamma-1)) * A
+    return pt / np.sqrt(gamma * R * Tt) * (2 / (gamma + 1)) ** ((gamma + 1) / 2 / (gamma - 1)) * A
 
 
 def mdot_corrected(pt, Tt, m_flow):

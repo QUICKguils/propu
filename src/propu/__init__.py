@@ -23,6 +23,6 @@ import pathlib
 from propu import mplrc
 
 _ROOT_PATH = pathlib.Path(__file__).parent.parent.parent
-_SRC_PATH  = pathlib.Path(__file__).parent
+_SRC_PATH = pathlib.Path(__file__).parent
 
 mplrc.load_rcparams()

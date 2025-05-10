@@ -8,7 +8,14 @@ from propu import constant as c
 from propu.constant import uconv, ureg
 
 
-def get_state(height: float) -> tuple[float, float, float, float]:
+class State(NamedTuple):
+    rho: float
+    p: float
+    T: float
+    a: float
+
+
+def get_state(height: float) -> State:
     """Get the atmospheric state variables at the given height.
 
     Get the density, pressure, temperature and sound speed for the given
@@ -17,7 +24,7 @@ def get_state(height: float) -> tuple[float, float, float, float]:
     Parameters
     ----------
     height : float
-        The geopotential height (m).
+        The geopotential height, in meters.
         Must be between 0 m and 84_500 m.
 
     Returns
@@ -59,13 +66,6 @@ def get_state(height: float) -> tuple[float, float, float, float]:
         6   71000  3.95642  214.65   -0.002
     ===== ======= ======== ======= =========
     """
-
-    class State(NamedTuple):
-        rho: float
-        p: float
-        T: float
-        a: float
-
     if 0 <= height < 11_000:  # Troposphere
         alpha = -0.0065  # [K/m]
         T0 = 288.15  # [K]

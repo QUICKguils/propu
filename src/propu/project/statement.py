@@ -16,11 +16,11 @@ rho = get_state(0).rho  # Density [kg/m³]
 mu = 17.89e-6  # Dynamic viscosity [Pa*s]
 
 airfoil = bemt.Airfoil(
-    profile=np.loadtxt(str(_DATA_PATH / "clarky" / "profile.dat"), skiprows=1),
-    aoa=np.loadtxt(str(_DATA_PATH / "clarky" / "aoa.dat")),
-    Re=np.loadtxt(str(_DATA_PATH / "clarky" / "reynolds.dat")),
-    cl=np.loadtxt(str(_DATA_PATH / "clarky" / "cl.dat")),
-    cd=np.loadtxt(str(_DATA_PATH / "clarky" / "cd.dat")),
+    profile = np.loadtxt(str(_DATA_PATH / "clarky" / "profile.dat"), skiprows = 1),
+    aoa     = np.loadtxt(str(_DATA_PATH / "clarky" / "aoa.dat")),
+    Re      = np.loadtxt(str(_DATA_PATH / "clarky" / "reynolds.dat")),
+    cl      = np.loadtxt(str(_DATA_PATH / "clarky" / "cl.dat")),
+    cd      = np.loadtxt(str(_DATA_PATH / "clarky" / "cd.dat")),
 )
 
 
@@ -47,7 +47,7 @@ def _create_APC_9x6() -> bemt.Propeller:
     chords = data[:, 1] * span
     pitches = np.deg2rad(data[:, 2])
     geometry = bemt.PropellerGeometry(
-        span=span, n_blades=n_blades, stations=stations, chords=chords, pitches=pitches,
+        span=span, n_blades=n_blades, stations=stations, chords=chords, pitches=pitches
     )
     return bemt.Propeller(
         keyword="apce_9x6", pretty_name="APC 9x6", airfoil=airfoil, geometry=geometry
@@ -62,7 +62,7 @@ def _create_APC_11x7() -> bemt.Propeller:
     chords = data[:, 1] * span
     pitches = np.deg2rad(data[:, 2])
     geometry = bemt.PropellerGeometry(
-        span=span, n_blades=n_blades, stations=stations, chords=chords, pitches=pitches,
+        span=span, n_blades=n_blades, stations=stations, chords=chords, pitches=pitches
     )
     return bemt.Propeller(
         keyword="apce_11x7", pretty_name="APC 11x7", airfoil=airfoil, geometry=geometry
@@ -77,7 +77,7 @@ def _create_APC_11x10() -> bemt.Propeller:
     chords = data[:, 1] * span
     pitches = np.deg2rad(data[:, 2])
     geometry = bemt.PropellerGeometry(
-        span=span, n_blades=n_blades, stations=stations, chords=chords, pitches=pitches,
+        span=span, n_blades=n_blades, stations=stations, chords=chords, pitches=pitches
     )
     return bemt.Propeller(
         keyword="apce_11x10", pretty_name="APC 11x10", airfoil=airfoil, geometry=geometry

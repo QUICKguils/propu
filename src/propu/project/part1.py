@@ -1,11 +1,10 @@
 """Answer the first part of the project.
 
-Considering an engine rotational speed of 9000 RPM and an advance velocity of
-20 m/s, compute the thrust, the power absorbed by the propeller and the
-propulsive efficiency for each propeller.
-Plot the thrust and power distributions along the span. Compare the propellers
-and discuss in terms of collective pitch, velocity triangles, distributions of
-torque and thrust.
+Considering an engine rotational speed of 9000 RPM and an advance velocity of 20 m/s, compute the
+thrust, the power absorbed by the propeller and the propulsive efficiency for each propeller.
+Plot the thrust and power distributions along the span.
+Compare the propellers and discuss in terms of collective pitch, velocity triangles, distributions
+of torque and thrust.
 """
 
 from propu import bemt

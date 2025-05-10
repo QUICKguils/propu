@@ -47,16 +47,18 @@ def load_rcparams(style="report") -> None:
     mpl.rcParams["axes.grid"] = True
     mpl.rcParams["grid.linewidth"] = 0.8
     mpl.rcParams["grid.alpha"] = 0.3
-    custom_colorcycler = mpl.cycler(color=[
-        UCOLOR["TealDark"], # C0
-        UCOLOR["OrangeDark"], # C1
-        UCOLOR["BlueLight"], # C2
-        UCOLOR["PurpleLight"], # C3
-        UCOLOR["GreenLight"], # C4
-        UCOLOR["Yellow"], # C5
-        UCOLOR["Red"], # C6
-        UCOLOR["GrayDark"], # C7
-    ])
+    custom_colorcycler = mpl.cycler(
+        color=[
+            UCOLOR["TealDark"],  # C0
+            UCOLOR["OrangeDark"],  # C1
+            UCOLOR["BlueLight"],  # C2
+            UCOLOR["PurpleLight"],  # C3
+            UCOLOR["GreenLight"],  # C4
+            UCOLOR["Yellow"],  # C5
+            UCOLOR["Red"],  # C6
+            UCOLOR["GrayDark"],  # C7
+        ]
+    )
     mpl.rcParams["axes.prop_cycle"] = mpl.cycler(custom_colorcycler)
 
     # Here, figure.dpi is set to scale nicely on the screen.

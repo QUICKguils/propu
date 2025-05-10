@@ -1,9 +1,8 @@
 """Code developed to answer the second part of the project.
 
-Plot the thrust and power coefficients, and propulsive efficiency against the
-advance ratio. Compare your results with the experimental data from [1].
-Discuss your results with the assumptions of the BEMT, flow conditions and
-forces.
+Plot the thrust and power coefficients, and propulsive efficiency against the advance ratio.
+Compare your results with the experimental data from [1].
+Discuss your results with the assumptions of the BEMT, flow conditions and forces.
 """
 
 import re
@@ -94,7 +93,9 @@ def compute_performance(fname: str) -> Solution:
     perf_computed = Performance(J=perf_measured.J, CT=CT, CP=CP, eta=eta)
 
     return Solution(
-        prop=prop, Om=Om, measured=perf_measured, computed=perf_computed, converged=converged
+        prop=prop, Om=Om,
+        measured=perf_measured, computed=perf_computed,
+        converged=converged
     )
 
 
@@ -116,8 +117,10 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
 
         # Thrust coefficients
         (computed_CT_line,) = axs["CT"].plot(
-            sol.computed.J, sol.computed.CT,
-            linestyle="solid", linewidth=0.8,
+            sol.computed.J,
+            sol.computed.CT,
+            linestyle="solid",
+            linewidth=0.8,
         )
         axs["CT"].scatter(
             sol.computed.J[sol.converged], sol.computed.CT[sol.converged],
