@@ -47,32 +47,40 @@ def create_variable_APC(theta: float) -> bemt.Propeller:
     )
 
 
-class SolvedPoint(NamedTuple):
+class Point(NamedTuple):
     J: float
     power: float
     theta: float
     converged: bool
 
 
-class Solution(NamedTuple):
+class Curve(NamedTuple):
     J: NDArray[np.float64]
     power: NDArray[np.float64]
     theta: NDArray[np.float64]
     converged: NDArray[np.bool]
 
 
+class Contour(NamedTuple):
+    J: NDArray[np.float64]
+    theta: NDArray[np.float64]
+    power: NDArray[np.float64]
+
+
+class Solution(NamedTuple):
+    curve: Curve
+    contour: Contour
+
+
 def main(*, out_enabled=True) -> Solution:
     """Execute the fourth part of the project."""
     J_range = np.linspace(0.2, 1.0, 20)
-    power_range = np.zeros(J_range.shape)
-    theta_range = np.zeros(J_range.shape)
-    converged = np.zeros(J_range.shape, dtype=np.bool)
-    for i, J in enumerate(J_range):
-        solved_point = compute_solved_point(J)
-        power_range[i] = solved_point.power
-        theta_range[i] = solved_point.theta
-        converged[i] = solved_point.converged
-    sol = Solution(J=J_range, power=power_range, theta=theta_range, converged=converged)
+    thetad_range = np.linspace(0, 10, 15)
+    theta_range = np.deg2rad(thetad_range)
+
+    curve_sol = compute_curve(J_range)
+    contour_sol = compute_contour(J_range, theta_range)
+    sol = Solution(curve=curve_sol, contour=contour_sol)
 
     if out_enabled:
         plot_solution(sol)
@@ -86,7 +94,7 @@ def get_operating_conditions(J: float) -> bemt.OperatingConditions:
     return bemt.OperatingConditions(Om=OM_IMPOSED, v_inf=v_inf, rho=stm.rho, mu=stm.mu)
 
 
-def compute_solved_point(J: float, thetad_bounds=[0, 20]):
+def compute_point(J: float, thetad_bounds=[0, 20]) -> Point:
     theta_bounds = np.deg2rad(thetad_bounds)
 
     # Perform a secant search in the neighborhood of the initial guess.
@@ -112,7 +120,33 @@ def compute_solved_point(J: float, thetad_bounds=[0, 20]):
         else:
             theta_bounds[0] = theta
 
-    return SolvedPoint(J=J, power=power, theta=theta, converged=converged)
+    return Point(J=J, power=power, theta=theta, converged=converged)
+
+
+def compute_curve(J_range: NDArray) -> Curve:
+    power_range = np.zeros(J_range.shape)
+    theta_range = np.zeros(J_range.shape)
+    converged = np.zeros(J_range.shape, dtype=np.bool)
+
+    for i, J in enumerate(J_range):
+        solved_point = compute_point(J)
+        power_range[i] = solved_point.power
+        theta_range[i] = solved_point.theta
+        converged[i] = solved_point.converged
+
+    return Curve(J=J_range, power=power_range, theta=theta_range, converged=converged)
+
+
+def compute_contour(J_range: NDArray, theta_range: NDArray) -> Contour:
+    (J_grid, theta_grid) = np.meshgrid(J_range, theta_range)
+    power_grid = np.zeros(J_grid.shape, dtype=np.float64)
+
+    for i, (J, theta) in enumerate(zip(J_grid.flat, theta_grid.flat)):
+        oper = get_operating_conditions(J)
+        prop = create_variable_APC(theta)
+        power_grid.flat[i] = bemt.bem(prop, oper).power
+
+    return Contour(J=J_grid, theta=theta_grid, power=power_grid)
 
 
 def plot_solution(sol: Solution) -> None:
@@ -122,20 +156,23 @@ def plot_solution(sol: Solution) -> None:
     to ensure their idempotence through multiple plot calls.
     """
     import matplotlib.pyplot as plt
+
     from propu.mplrc import REPORT_TW
 
-    thetad = np.rad2deg(sol.theta)
+    fig, ax = plt.subplots(figsize=(0.7 * REPORT_TW, 0.7 * REPORT_TW))
 
-    fig, ax = plt.subplots(figsize=(0.5*REPORT_TW, 0.5*REPORT_TW))
-    (line,) = ax.plot(sol.J, thetad, linestyle="solid", linewidth=0.8)
+    topo = ax.contour(sol.contour.J, np.rad2deg(sol.contour.theta), sol.contour.power)
+    (line,) = ax.plot(sol.curve.J, np.rad2deg(sol.curve.theta), linestyle="solid", linewidth=0.8)
     ax.scatter(
-        sol.J[sol.converged], thetad[sol.converged],
+        sol.curve.J[sol.curve.converged], np.rad2deg(sol.curve.theta[sol.curve.converged]),
         s=15, linewidths=1, zorder=2.5, marker=".", color=line.get_color(),
     )
     ax.scatter(
-        sol.J[~sol.converged], thetad[~sol.converged],
+        sol.curve.J[~sol.curve.converged], np.rad2deg(sol.curve.theta[~sol.curve.converged]),
         s=15, linewidths=1, zorder=2.5, marker="x", color=line.get_color(),
     )
+
+    ax.clabel(topo, fontsize=9, fmt="%3.0f W")
     ax.set_xlabel(r"$J$")
     ax.set_ylabel(r"$\theta$ (°)")
 
@@ -144,4 +181,4 @@ def plot_solution(sol: Solution) -> None:
 
 def _get_v_inf(sol: Solution) -> NDArray:
     D = 2 * stm.get_apc_propeller(KEYWORD_PROP_IMPOSED).geometry.span
-    return sol.J * D * OM_IMPOSED * uconv("rad/s", "rps")
+    return sol.curve.J * D * OM_IMPOSED * uconv("rad/s", "rps")
