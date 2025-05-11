@@ -143,7 +143,7 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
 
     from propu.mplrc import REPORT_TW
 
-    fig, (ax_eta, ax_drag) = plt.subplots(2, 1, figsize=(REPORT_TW, REPORT_TW))
+    fig, (ax_eta, ax_drag) = plt.subplots(1, 2)
 
     def plot(sol: Solution):
         """Plot the solutions of this project part."""

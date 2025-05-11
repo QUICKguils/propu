@@ -159,7 +159,7 @@ def plot_solution(sol: Solution) -> None:
 
     from propu.mplrc import REPORT_TW
 
-    fig, ax = plt.subplots(figsize=(0.7 * REPORT_TW, 0.7 * REPORT_TW))
+    fig, ax = plt.subplots(figsize=(0.5 * REPORT_TW, 0.5 * REPORT_TW))
 
     topo = ax.contour(sol.contour.J, np.rad2deg(sol.contour.theta), sol.contour.power)
     (line,) = ax.plot(sol.curve.J, np.rad2deg(sol.curve.theta), linestyle="solid", linewidth=0.8)
