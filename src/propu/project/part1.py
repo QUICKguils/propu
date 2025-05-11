@@ -7,6 +7,8 @@ Compare the propellers and discuss in terms of collective pitch, velocity triang
 of torque and thrust.
 """
 
+import numpy as np
+
 from propu import bemt
 from propu.constant import uconv
 from propu.project import statement as stm
@@ -100,3 +102,43 @@ def plot_solution(sol_dict: dict[str, bemt.BemSolution]) -> None:
 
     fig.legend(loc="outside upper center", ncols=4)
     fig.show()
+
+
+def plot_pitches() -> None:
+    import matplotlib.pyplot as plt
+    from propu.mplrc import REPORT_TW
+
+    def find_optimal_aoa() -> float:
+        arg_aoa = int(np.mean(np.argmax(stm.airfoil.cl / stm.airfoil.cd, axis=0)))
+        # arg_aoa = np.argmin(stm.airfoil.cd, axis=0)[0]
+        return stm.airfoil.aoa[arg_aoa]
+
+    def plot(prop, ax):
+        ax.plot(
+            prop.geometry.stations/prop.geometry.span,
+            np.rad2deg(prop.geometry.pitches),
+            linewidth=0.8, label="Blade pitch"
+        )
+        ax.plot(
+            sol.r_dist/prop.geometry.span,
+            np.rad2deg(np.pi/2 + aoa_opt + sol.beta_dist),
+            linewidth=0.8, label="Optimal pitch"
+        )
+        ax.set_title(f"{prop.pretty_name}")
+        ax.set_xlabel(r"$r/R$")
+        ax.set_ylabel(r"$\bar{\chi}$")
+
+    oper = bemt.OperatingConditions(Om=OM_IMPOSED, v_inf=V_IMPOSED, rho=stm.rho, mu=stm.mu)
+    aoa_opt = find_optimal_aoa()
+
+    fig, axs = plt.subplots(2, 2, figsize=(REPORT_TW, REPORT_TW))
+
+    for i, prop in enumerate(stm.propellers):
+        sol = bemt.bem(prop, oper)
+        plot(prop, axs.flat[i])
+
+    handles, labels = axs.flat[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='outside upper center', ncols=2)
+    fig.show()
+
+
