@@ -174,7 +174,7 @@ def plot_solution(sol: Solution) -> None:
 
     ax.clabel(topo, fontsize=9, fmt="%3.0f W")
     ax.set_xlabel(r"$J$")
-    ax.set_ylabel(r"$\theta$ (°)")
+    ax.set_ylabel(r"$\theta/\degree$")
 
     fig.show()
 

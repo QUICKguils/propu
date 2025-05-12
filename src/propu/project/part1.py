@@ -79,7 +79,7 @@ def plot_solution(sol_dict: dict[str, bemt.BemSolution]) -> None:
             s=15, linewidths=1, zorder=2.5, marker="x", color=thrust_line.get_color(),
         )
         ax_thrust.set_xlabel("$r/R$")
-        ax_thrust.set_ylabel("$dT/dr$ [N/m]")
+        ax_thrust.set_ylabel("$(dT/dr)$/(N/m)")
 
         # Power distribution along the blades span
         (power_line,) = ax_power.plot(
@@ -95,7 +95,7 @@ def plot_solution(sol_dict: dict[str, bemt.BemSolution]) -> None:
             s=15, linewidths=1, zorder=2.5, marker="x", color=power_line.get_color(),
         )
         ax_power.set_xlabel("$r/R$")
-        ax_power.set_ylabel("$dP/dr$ [W/m]")
+        ax_power.set_ylabel("$(dP/dr)$/(W/m)")
 
     for _, sol in sol_dict.items():
         plot(sol)
@@ -105,40 +105,36 @@ def plot_solution(sol_dict: dict[str, bemt.BemSolution]) -> None:
 
 
 def plot_pitches() -> None:
+    """Optimal pitch distribution of each propeller."""
     import matplotlib.pyplot as plt
     from propu.mplrc import REPORT_TW
 
-    def find_optimal_aoa() -> float:
-        arg_aoa = int(np.mean(np.argmax(stm.airfoil.cl / stm.airfoil.cd, axis=0)))
-        # arg_aoa = np.argmin(stm.airfoil.cd, axis=0)[0]
-        return stm.airfoil.aoa[arg_aoa]
-
-    def plot(prop, ax):
+    def plot(sol: bemt.BemSolution, aoa_opt, ax):
         ax.plot(
-            prop.geometry.stations/prop.geometry.span,
-            np.rad2deg(prop.geometry.pitches),
+            sol.prop.geometry.stations/sol.prop.geometry.span,
+            np.rad2deg(sol.prop.geometry.pitches),
             linewidth=0.8, label="Blade pitch"
         )
         ax.plot(
-            sol.r_dist/prop.geometry.span,
+            sol.r_dist/sol.prop.geometry.span,
             np.rad2deg(np.pi/2 + aoa_opt + sol.beta_dist),
             linewidth=0.8, label="Optimal pitch"
         )
-        ax.set_title(f"{prop.pretty_name}")
+        ax.set_title(f"{sol.prop.pretty_name}")
         ax.set_xlabel(r"$r/R$")
-        ax.set_ylabel(r"$\bar{\chi}$")
+        ax.set_ylabel(r"$\bar{\chi}/\degree$")
 
+    arg_aoa = np.argmax(stm.airfoil.cl / stm.airfoil.cd, axis=0)
+    aoa_opt = np.mean(stm.airfoil.aoa[arg_aoa])
     oper = bemt.OperatingConditions(Om=OM_IMPOSED, v_inf=V_IMPOSED, rho=stm.rho, mu=stm.mu)
-    aoa_opt = find_optimal_aoa()
 
     fig, axs = plt.subplots(2, 2, figsize=(REPORT_TW, REPORT_TW))
 
     for i, prop in enumerate(stm.propellers):
         sol = bemt.bem(prop, oper)
-        plot(prop, axs.flat[i])
+        plot(sol, aoa_opt, axs.flat[i])
 
     handles, labels = axs.flat[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='outside upper center', ncols=2)
+
     fig.show()
-
-

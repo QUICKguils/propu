@@ -177,7 +177,7 @@ def plot_solution(sol_dict: dict[str, Solution]) -> None:
             s=20, linewidths=1, zorder=2.5, marker="+", color=drag_line.get_color(),
         )
         ax_drag.set_xlabel(r"$J$")
-        ax_drag.set_ylabel(r"$D$ (N)")
+        ax_drag.set_ylabel(r"$D$/N")
 
     for _, sol in sol_dict.items():
         plot(sol)
