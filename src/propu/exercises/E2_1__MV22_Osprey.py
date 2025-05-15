@@ -8,13 +8,13 @@ def main():
     print("Solving exo 2.1: MV-22 Osprey")
 
     # Statement data
-    disk_loading = 11.4 * uconv("psf", "Pa")
+    l = 11.4 * uconv("psf", "Pa")  # Disk loading
     v_inf = 80 * uconv("knot", "m/s")
-    rho_sl = get_state(0).rho
+    rho = get_state(0).rho
 
     # Resolution
-    # NOTE: this commented eta_p is not exact (see personnal notes)
-    # eta_p = 2v_inf / (2v_inf + (disk_loading/(rho_sl*v_inf)))
-    eta_p = 1 / (0.5 + np.sqrt(0.25 + disk_loading / (2 * rho_sl * v_inf**2)))
+    # NOTE: see complement (1)
+    v_e = np.sqrt(2*l/rho + v_inf**2)
+    eta_p = 2*v_inf/(v_inf+v_e)
 
-    print(f"{eta_p=}")
+    print(f"Propulsive efficiency: {100*eta_p:2.2f} %")
