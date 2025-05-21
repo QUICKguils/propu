@@ -97,7 +97,7 @@ def get_operating_conditions(J: float) -> bemt.OperatingConditions:
 def compute_point(J: float, thetad_bounds=[0, 20]) -> Point:
     theta_bounds = np.deg2rad(thetad_bounds)
 
-    # Perform a secant search in the neighborhood of the initial guess.
+    # Perform a bisection search in the neighborhood of the initial guess.
     # See this as a small minimization-like problem:
     #   f(theta) = 0, where f(theta) := power(theta) - P_IMPOSED.
     max_iter = 15

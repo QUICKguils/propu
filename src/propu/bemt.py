@@ -107,7 +107,7 @@ class BemSolution:
 
 def local_bem(
     prop: Propeller, oper: OperatingConditions, loc: Location,
-    *, relax=0.3, rtol=1e-5, atol=1e-5, max_iter=100,
+    *, relax=0.3, atol=1e-4, rtol=1e-3, max_iter=100,
 ) -> LocalBemSolution:
     """Momentum balance in one stream tube.
 
