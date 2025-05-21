@@ -8,7 +8,6 @@ def main():
     print("Solving exo 2.2: Sonaca 200")
 
     # Statement data
-    n = 3  # Number of blades
     D = 1750 * uconv("mm", "m")  # Diameter
     air = get_state(0)  # ISA properties at sea level
     T = 1700  # [N]
