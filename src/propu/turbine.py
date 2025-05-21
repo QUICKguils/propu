@@ -3,8 +3,6 @@
 from typing import NamedTuple
 import warnings
 
-import numpy as np
-
 from propu import constant as c
 
 
@@ -18,14 +16,29 @@ def p_static2total(M, gamma=c.gamma_air):
     return T_static2total(M, gamma) ** (gamma / (gamma - 1))
 
 
-def mdot_chocking(pt, Tt, R, gamma, A):
-    """Choking mass flow."""
-    return pt / np.sqrt(gamma * R * Tt) * (2 / (gamma + 1)) ** ((gamma + 1) / 2 / (gamma - 1)) * A
+def rho_static2total(M, gamma=c.gamma_air):
+    """Static to total density conversion factor."""
+    return T_static2total(M, gamma) ** (1 / (gamma - 1))
+
+
+def a_static2total(M, gamma=c.gamma_air):
+    """Static to total sound speed conversion factor."""
+    return T_static2total(M, gamma) ** 0.5
+
+
+def mdot_chocking(section_area, p_total, T_total, gamma=c.gamma_air, R=c.R_air):
+    """Choking mass flow rate."""
+    return (
+        section_area
+        * p_total
+        * (gamma / (R * T_total)) ** 0.5
+        * (2 / (gamma + 1)) ** ((gamma + 1) / (2 * gamma - 2))
+    )
 
 
 def mdot_corrected(pt, Tt, m_flow):
     """Corrected/reduced mass flow."""
-    return m_flow * (c.p_ref / pt) * np.sqrt(Tt / c.T_ref)
+    return m_flow * (c.p_ref / pt) * (Tt / c.T_ref) ** 0.5
 
 
 def bisection(f, bounds: tuple[float, float], *, max_iter=20, ftol=1e-3, xtol=1e-3):
@@ -60,12 +73,21 @@ def bisection(f, bounds: tuple[float, float], *, max_iter=20, ftol=1e-3, xtol=1e
             Raised to True if `ftol` or `xtol` are satisfied.
         - `n_iter` : int
             The number of iterations performed.
+
+    Raises
+    ------
+    ValueError
+        If f(x) at bounds are not of opposite signs.
     """
+
     class Solution(NamedTuple):
         x: float
         residual: float
         converged: bool
         n_iter: int
+
+    if f(bounds[0]) * f(bounds[-1]) > 0:
+        raise ValueError("Seems the root is not contained in the given `bounds`")
 
     converged = False
     for n_iter in range(1, max_iter + 1):
