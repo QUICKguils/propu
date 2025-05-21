@@ -8,17 +8,26 @@ ureg = pint.UnitRegistry()
 
 
 def uconv(src: str, dst: str):
-    """Conversion factor, from `src` units to `dst` units."""
+    """Get the conversion factor, from `src` units to `dst` units."""
     return (1 * ureg(src)).to(ureg(dst)).magnitude
 
 
+def mconv(m_src: float, u_src: str, u_dst: str):
+    """Get the magnitude of a quantity, in the desired units.
+
+    Returns the magnitude of a given quantity of magnitude `m_src` and units `u_src`,
+    in the desired `dst` units.
+    """
+    return ureg.Quantity(m_src, u_src).to(ureg(u_dst)).magnitude
+
+
 # Physical constants
-gamma_air = 1.4  # Adiabatic index or ratio of specific heats (dry air at 20ºC)
+gamma_air = 1.4  # Adiabatic index (dry air at 20ºC)
 R_air = 287.05287  # Specific gas constant for dry air [J/(kg*m)]
 
 # Reference quantities
 p_ref = 1 * uconv("atm", "Pa")  # Reference atmospheric pressure [Pa]
-T_ref = 288  # Reference temperature [K]
+T_ref = 288.15  # Reference temperature [K]
 
 # Units (absent from pint)
 ureg.define("psf = 1 * lbf/ft**2")
