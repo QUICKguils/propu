@@ -2,8 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
 
-from propu.constant import uconv
-from propu.isatmosphere import get_state
+from propu.constant import uconv, get_isa
 from propu.mplrc import REPORT_TW
 
 
@@ -13,7 +12,7 @@ def main():
     # 0. Statement data
 
     Pm = 115 * uconv("hp", "W")  # Mechanical power (Pm = Ps here)
-    rho = get_state(0).rho
+    rho = get_isa(0).rho
     D = 6 * uconv("ft", "m")
 
     # 1. Prepeller efficiency vs. airspeed

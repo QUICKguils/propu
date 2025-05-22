@@ -5,14 +5,13 @@ import pathlib
 import numpy as np
 
 from propu import bemt
-from propu.constant import uconv
-from propu.isatmosphere import get_state
+from propu.constant import uconv, get_isa
 
 _PROJECT_PATH = pathlib.Path(__file__).parent
 _DATA_PATH = _PROJECT_PATH / "res"
 
 # Conventional air properties (STP, sea level)
-rho = get_state(0).rho  # Density [kg/m³]
+rho = get_isa(0).rho  # Density [kg/m³]
 mu = 17.89e-6  # Dynamic viscosity [Pa*s]
 
 airfoil = bemt.Airfoil(

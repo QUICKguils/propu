@@ -1,7 +1,6 @@
 import numpy as np
 
-from propu.constant import uconv
-from propu.isatmosphere import get_state
+from propu.constant import uconv, get_isa
 
 
 def main():
@@ -9,7 +8,7 @@ def main():
 
     # Statement data
     D = 1750 * uconv("mm", "m")  # Diameter
-    air = get_state(0)  # ISA properties at sea level
+    air = get_isa(0)  # ISA properties at sea level
     T = 1700  # [N]
     vinf = 150 * uconv("km/hr", "m/s")  # Upstream wind speed
 

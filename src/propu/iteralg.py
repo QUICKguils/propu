@@ -11,7 +11,9 @@ class IterTable:
         self.variables = variables
         self.units = units
 
-        self.colspaces = tuple(len(s) + 4 for s in self.variables)
+        self.colspaces = tuple(
+            max(10, len(v), len(u)) + 2 for (v, u) in zip(self.variables, self.units)
+        )
         self.hline = "-" * (sum(self.colspaces) + len(self.variables) + 1)
         self.variables_row = "|" + "".join(
             f"{var:^{cs}}|" for (var, cs) in zip(self.variables, self.colspaces)
@@ -24,7 +26,7 @@ class IterTable:
 
         self.rows = []  # The future rows to add
 
-    def add_line(self, *variables_value):
+    def add_row(self, *variables_value):
         if len(variables_value) is not len(self.variables):
             warn("Bro use my printing table correctly pls")
         self.rows.append(

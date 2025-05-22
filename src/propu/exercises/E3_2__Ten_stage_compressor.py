@@ -15,7 +15,7 @@ def main():
 
     # Instantiate a table printer
     variables = ("Iter", "Power", "eta_s_tot", "eta_s_stage", "gamma")
-    units = ("", "(MW)", "", "(%)", "(%)")
+    units = ("", "(MW)", "(%)", "(%)", "")
     table = IterTable(variables, units)
 
     # Total pressure ratio over the ten stages
@@ -23,6 +23,7 @@ def main():
 
     # Iterations on gamma value.
     # cp needs T0_out, which needs gamma, which in turns need cp.
+    # NOTE: see complement (4)
     n_iter = 5
     g = c.gamma_air
     for iter in range(1, n_iter + 1):
@@ -35,7 +36,7 @@ def main():
         P = mdot * cp * T0_in * (1 / eta_s_tot * (pi_tot ** ((g - 1) / g) - 1))
 
         # Add the computed data for printing
-        table.add_line(iter, 1e-6 * P, 100 * eta_s_tot, 100 * eta_s_stage, g)
+        table.add_row(iter, 1e-6 * P, 100 * eta_s_tot, 100 * eta_s_stage, g)
 
         # Update gamma for next iteration
         g = cp / (cp - c.R_air)

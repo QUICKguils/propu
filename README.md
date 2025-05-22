@@ -40,9 +40,8 @@ sol = question2.main()
 
 # Example 3
 # Get the air density at 30_000 ft.
-from propu.constant import uconv
-from propu.isatmosphere import get_state
-rho = get_state(30_000 * uconv("ft", "m")).rho
+from propu.constant import uconv, get_isa
+rho = get_isa(30_000 * uconv("ft", "m")).rho
 ```
 
 ## Project architecture
@@ -56,7 +55,6 @@ It contains the following packages and modules.
 - Modules:
   - `mplrc.py` Set some global Matplotlib parameters.
   - `constant.py` Constant quantities used throughout the code.
-  - `isatmosphere.py` International Standard Atmosphere.
   - `iteralg.py` Iterative algorithm utilities.
   - `bemt.py` Blade element momentum techniques.
   - `turbine.py` Gas turbine analyses.
