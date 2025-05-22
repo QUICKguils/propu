@@ -4,6 +4,7 @@ from propu.iteralg import IterTable
 
 def main():
     print("Solving exo 3.4: Power losses")
+    # NOTE: see complement (6)
 
     # Statement data
     pi_c = 35
@@ -40,7 +41,7 @@ def main():
     print("Iteration table for T0_2")
     table_12.print()
 
-    # 2. Stations 1 -> 3 : find T0_2 iteratively
+    # 2. Stations 1 -> 3 : find T0_3 iteratively
 
     # Instantiate a table printer
     table_13 = IterTable(("Iter", "cp_13", "T0_3"), ("", "(J/(kg*K))", "(K)"))

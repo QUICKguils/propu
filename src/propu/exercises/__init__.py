@@ -30,4 +30,10 @@ __all__ = [
     "E4_7__CFM56_mixed_exhaust",
     "E4_8__PW2037",
     "E4_9__M88_afterburn_turbofan",
+
+    # Chapter 7: Operating lines
+    "E7_1__Component_matching",
+    "E7_2__Counter_rotating_ducted_fan",
+    "E7_3__C1802_HBPR",
+    "E7_4__UAV_fan",
 ]
