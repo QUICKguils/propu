@@ -57,5 +57,6 @@ It contains the following packages and modules.
   - `mplrc.py` Set some global Matplotlib parameters.
   - `constant.py` Constant quantities used throughout the code.
   - `isatmosphere.py` International Standard Atmosphere.
+  - `iteralg.py` Iterative algorithm utilities.
   - `bemt.py` Blade element momentum techniques.
   - `turbine.py` Gas turbine analyses.
