@@ -1,4 +1,4 @@
-import numpy as np
+import math
 
 from propu.constant import uconv, get_isa
 
@@ -13,8 +13,8 @@ def main():
     vinf = 150 * uconv("km/hr", "m/s")  # Upstream wind speed
 
     # Resolution
-    Ap = np.pi * D**2 / 4
-    ve = np.sqrt(2 * T / (air.rho * Ap) + vinf**2)  # Similar to E2_1
+    Ap = math.pi * D**2 / 4
+    ve = math.sqrt(2 * T / (air.rho * Ap) + vinf**2)  # Similar to E2_1
     v2 = (vinf + ve) / 2
     eta = 2 * vinf / (vinf + ve)
     pdiff = 0.5 * air.rho * (v2**2 - vinf**2)  # Just Bernouilli

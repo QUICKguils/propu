@@ -8,6 +8,9 @@ from scipy import interpolate
 
 ureg = pint.UnitRegistry()
 
+# Units (absent from pint)
+ureg.define("psf = 1 * lbf/ft**2")
+
 
 def uconv(src: str, dst: str):
     """Get the conversion factor, from `src` units to `dst` units."""
@@ -18,21 +21,19 @@ def mconv(m_src: float, u_src: str, u_dst: str):
     """Get the magnitude of a quantity, in the desired units.
 
     Returns the magnitude of a given quantity of magnitude `m_src` and units `u_src`,
-    in the desired `dst` units.
+    in the desired `u_dst` units.
     """
     return ureg.Quantity(m_src, u_src).to(ureg(u_dst)).magnitude
 
 
 # Physical constants
 gamma_air = 1.4  # Adiabatic index (dry air at 20ºC)
-R_air = 287.05287  # Specific gas constant for dry air [J/(kg*m)]
+R_air = 287.05287  # Specific gas constant for dry air [J/(kg*K)]
+ge = mconv(1, "g_n", "m/s**2")  # Nominal gravity acceleration [m/s**2]
 
-# Reference quantities
+# Static, sea level (SLS) conditions
 p_ref = 1 * uconv("atm", "Pa")  # Reference atmospheric pressure [Pa]
 T_ref = 288.15  # Reference temperature [K]
-
-# Units (absent from pint)
-ureg.define("psf = 1 * lbf/ft**2")
 
 
 def get_isa(height: float):
@@ -88,6 +89,7 @@ def get_isa(height: float):
         6   71000  3.95642  214.65   -0.002
     ===== ======= ======== ======= =========
     """
+
     class State(NamedTuple):
         rho: float
         p: float
@@ -100,14 +102,14 @@ def get_isa(height: float):
         p0 = 101_325.0  # [Pa]
 
         T = T0 + alpha * height
-        p = p0 * (T0 / T) ** (uconv("g_n", "m/s**2") / (R_air * alpha))
+        p = p0 * (T0 / T) ** (ge / (R_air * alpha))
 
     elif 11_000 <= height < 20_000:  # Tropopause
         T = 216.65  # [K]
         p0 = 22_632.1  # [Pa]
         h0 = 11_000  # [m]
 
-        p = p0 * np.exp(-1 * ureg.g_n * (height - h0) / (R_air * T))
+        p = p0 * np.exp(-ge * (height - h0) / (R_air * T))
 
     elif 20_000 <= height < 32_000:  # Stratosphere 1
         alpha = 0.001  # [K/m]
@@ -116,7 +118,7 @@ def get_isa(height: float):
         h0 = 20_000  # [m]
 
         T = T0 + alpha * (height - h0)
-        p = p0 * (T0 / T) ** (uconv("g_n", "m/s**2") / (R_air * alpha))
+        p = p0 * (T0 / T) ** (ge / (R_air * alpha))
 
     elif 32_000 <= height < 47_000:  # Stratosphere 2
         alpha = 0.0028  # [K/m]
@@ -125,14 +127,14 @@ def get_isa(height: float):
         h0 = 32_000  # [m]
 
         T = T0 + alpha * (height - h0)
-        p = p0 * (T0 / T) ** (uconv("g_n", "m/s**2") / (R_air * alpha))
+        p = p0 * (T0 / T) ** (ge / (R_air * alpha))
 
     elif 47_000 <= height < 51_000:  # Stratopause
         T = 270.65  # [K]
         p0 = 110.906  # [Pa]
         h0 = 47_000  # [m]
 
-        p = p0 * np.exp(-uconv("g_n", "m/s**2") * (height - h0) / (R_air * T))
+        p = p0 * np.exp(-ge * (height - h0) / (R_air * T))
 
     elif 51_000 <= height < 71_000:  # Mesosphere 1
         alpha = -0.0028  # [K/m]
@@ -141,7 +143,7 @@ def get_isa(height: float):
         h0 = 51_000  # [m]
 
         T = T0 + alpha * (height - h0)
-        p = p0 * (T0 / T) ** (uconv("g_n", "m/s**2") / (R_air * alpha))
+        p = p0 * (T0 / T) ** (ge / (R_air * alpha))
 
     elif 71_000 <= height <= 84_500:  # Mesosphere 2
         alpha = -0.002  # [K/m]
@@ -150,7 +152,7 @@ def get_isa(height: float):
         h0 = 71_000  # [m]
 
         T = T0 + alpha * (height - h0)
-        p = p0 * (T0 / T) ** (uconv("g_n", "m/s**2") / (R_air * alpha))
+        p = p0 * (T0 / T) ** (ge / (R_air * alpha))
 
     else:
         raise ValueError("height must be between 0m and 84_500m")

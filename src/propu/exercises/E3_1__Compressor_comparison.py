@@ -5,8 +5,9 @@ from propu import constant as c
 
 def main():
     print("Solving exo 3.1: Comparison of compressors")
+    # NOTE: see complement (3)
 
-    # Statement data
+    ## Statement data
 
     class A:
         p0_ratio = 4.5  # Total pressure ratio
@@ -21,16 +22,15 @@ def main():
     T_1 = c.mconv(60, "degF", "K")  # Inlet temperature
     g = c.gamma_air  # Adiabatic index
 
-    # Resolution
-    # NOTE: see complement (3)
+    ## Resolution
 
-    # Compressor A.
+    # Compressor A
     # Just revert the formula (3.32), p. 26-2
     A.eta_p = ((g - 1) * math.log(A.p0_ratio)) / (
         g * math.log((A.p0_ratio ** ((g - 1) / g) - 1) / (A.eta_s) + 1)
     )
 
-    # Compressor B.
+    # Compressor B
     # Calculate T2, from its def. (B.8),
     # then find eta_p from (3.29)
     B.T2 = B.T0_2 - (B.v_2**2 * (g - 1)) / (2 * c.R_air * g)
