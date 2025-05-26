@@ -29,22 +29,23 @@ import propu
 # ...do whathever you want with the package
 
 # Example 1
-# Run the second part of the project
+# Run the second part of the project.
 from propu.project import part2
 sol = part2.main()
 
 # Example 2
-# Run the second question of the exam
-from propu.exam import question2
-sol = question2.main()
+# Import all solved execises (recommended in interactive session only),
+# and execute one of them.
+from propu.exercises import *
+E3_5__Jet_fuel_starter.main()
 
 # Example 3
 # Get the air density at 30_000 ft.
-from propu.constant import uconv, get_isa
-rho = get_isa(30_000 * uconv("ft", "m")).rho
+from propu.constant import mconv, get_isa
+rho = get_isa(mconv(30_000, "ft", "m")).rho
 ```
 
-## Project architecture
+## Project layout
 
 The source code lies in `src/propu/`.
 It contains the following packages and modules.
@@ -57,4 +58,4 @@ It contains the following packages and modules.
   - `constant.py` Constant quantities used throughout the code.
   - `iteralg.py` Iterative algorithm utilities.
   - `bemt.py` Blade element momentum techniques.
-  - `turbine.py` Gas turbine analyses.
+  - `turbine.py` Gas turbine and jet engine analyses.

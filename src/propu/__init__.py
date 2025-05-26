@@ -15,7 +15,7 @@ mplrc        -- Set some global matplotlib parameters.
 constant     -- Constant quantities used throughout the code.
 iteralg      -- Iterative algorithm utilities.
 bemt         -- Blade element momentum techniques.
-turbine      -- Gas turbine analyses.
+turbine      -- Gas turbine and jet engine analyses.
 """
 
 import pathlib
