@@ -101,8 +101,6 @@ def main():
 
     ## 3.1 Converging nozzle
 
-    # Check nozzle pressure ratio.
-    # print(f"{npr=:.4g}")
     # NOTE:
     # The NPRC value always lands approximately in the range [1.83 − 1.89].
     # if npr < 1.83:
@@ -114,6 +112,11 @@ def main():
     # if npr > 1.89:
     #    Nozzle is chocked for sure, but in that case we still need to iterate
     #    to find the sonic conditions.
+
+    # Check nozzle pressure ratio.
+    # print(f"{npr=:.4g}")
+    # => 5.127
+    # => Chocked for sure.
 
     # Find cp_5s5t, g_5s5t, Ts_5, nprc iteratively
     # NOTE:
@@ -193,4 +196,3 @@ def main():
     print("7. Conv-div nozzle")
     print(f"   Thrust: {1e-3 * T_div:.4g} kN")
     print(f"   SFC:    {10 * 3600 * SFC_div:.4g} kg/(hr*daN)")
-    print(far, mdot, mdot_f)
