@@ -1,5 +1,5 @@
 import propu.constant as cst
-import propu.turbine as turb
+from propu import jet
 from propu.iteralg import IterTable
 
 
@@ -36,12 +36,9 @@ def main():
     # as the temperature gap is expected to be not that high,
     # for a compressor with quite low pressure ratio.
 
-    g_12 = cst.gamma_air  # gamma guess
-    for iter in range(3):
-        T0_2 = cst.T_ref * turb.compressor_tau(pi_c, eta_s_c, g_12)
-        cp_12 = cst.lerp_cp((T0_2 + cst.T_ref) / 2, 0)
-        table_12.add_row(iter, cp_12, T0_2, g_12)  # keep track of iterations
-        g_12 = cp_12 / (cp_12 - cst.R_air)  # iteration update
+    # Find cp_12, T0_2, g_12 iteratively, by using the compressor eta-s equation.
+    g_12 = cst.gamma_air  # initial guess
+    cp_12, T0_2, g_12 = jet.compressor(T0_1, pi_c, eta_s_c, g_12, table_12)
 
     ## 2. Between the two turbines : find T0_4 iteratively
 

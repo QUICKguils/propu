@@ -11,11 +11,11 @@ exam      -- Code developed as part of the written exam.
 
 Submodules
 ----------
-mplrc        -- Set some global matplotlib parameters.
-constant     -- Constant quantities used throughout the code.
-iteralg      -- Iterative algorithm utilities.
-bemt         -- Blade element momentum techniques.
-turbine      -- Gas turbine and jet engine analyses.
+mplrc    -- Set some global matplotlib parameters.
+constant -- Constant quantities used throughout the code.
+iteralg  -- Iterative algorithm utilities.
+bemt     -- Blade element momentum techniques.
+jet      -- Jet engine cycle analyses.
 """
 
 import pathlib

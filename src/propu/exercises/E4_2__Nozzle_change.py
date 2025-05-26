@@ -1,5 +1,5 @@
 import propu.constant as cst
-import propu.turbine as turb
+from propu import jet
 from propu.iteralg import IterTable
 
 
@@ -11,6 +11,7 @@ def main():
 
     # Statement data
     M_0 = 0.75
+    h = 0  # [m]
     mdot = cst.mconv(165, "lb/s", "kg/s")
     pi_c = 15
     eta_s_c = 0.88
@@ -23,15 +24,15 @@ def main():
     eta_m = 0.995
 
     # ISA/SLS assumptions
-    sl_state = cst.get_isa(0)
+    sl_state = cst.get_isa(h)
     p_0 = sl_state.p
     T_0 = sl_state.T
     a_0 = sl_state.a
     v_0 = M_0 * a_0
     cp_0 = cst.lerp_cp(T_0, 0)
     g_0 = cp_0 / (cp_0 - cst.R_air)
-    T0_0 = T_0 * turb.T_static2total(M_0, g_0)
-    p0_0 = p_0 * turb.p_static2total(M_0, g_0)
+    T0_0 = T_0 * jet.T_static2total(M_0, g_0)
+    p0_0 = p_0 * jet.p_static2total(M_0, g_0)
 
     # Instantiate the iteration tables
     table_12 = IterTable(("Iter", "cp_12", "T0_2", "gamma"), ("", "(J/(kg*K))", "(K)", ""))
@@ -47,29 +48,17 @@ def main():
 
     ## 1. Fuel mass flow rate
 
-    T0_1 = T0_0  # 'cause adiabatic ram compression
+    T0_1 = T0_0  # Adiabatic ram compression
 
-    # Find T0_2, cp_12, g_12 iteratively
-    g_12 = cst.gamma_air  # gamma guess
-    for iter in range(n_iter):
-        T0_2 = T0_1 * turb.compressor_tau(pi_c, eta_s_c, g_12)
-        cp_12 = cst.lerp_cp((T0_2 + T0_1) / 2, 0)
-        table_12.add_row(iter, cp_12, T0_2, g_12)  # keep track of iterations
-        g_12 = cp_12 / (cp_12 - cst.R_air)  # iteration update
+    # Find T0_2, cp_12, g_12 iteratively, by using
+    # the compressor isentropic efficiency equation.
+    g_12 = cst.gamma_air  # initial guess
+    cp_12, T0_2, g_12 = jet.compressor(T0_1, pi_c, eta_s_c, g_12, table_12)
 
-    # Find mdot_f, far, cp_3r iteratively
-    cp_2r = cst.lerp_cp((T0_2 + cst.T_ref) / 2, 0)
-    far = 0.02  # far guess
-    mdot_f = far * mdot  # resulting mdot_f guess
-    for iter in range(n_iter):
-        cp_3r = cst.lerp_cp((T0_3 + cst.T_ref) / 2, far)
-        table_23.add_row(iter, cp_3r, mdot_f, far)  # keep track of iterations
-        # Update estimated mdot_f and far with combution equation balance.
-        # I could've take time to isolate mdot_f one one side, but this converges anyways.
-        mdot_f = (
-            (mdot_f + mdot) * cp_3r * (T0_3 - cst.T_ref) - mdot * cp_2r * (T0_2 - cst.T_ref)
-        ) / (eta_cc * lhv)
-        far = mdot_f / mdot
+    # Find mdot_f and far iteratively, by using
+    # the combustion equation.
+    far = 0.02  # Initial guess
+    mdot_f, far = jet.combustion_chamber(T0_2, T0_3, eta_cc, lhv, mdot, far, table_23, n_iter)
 
     # Mass flow rate at the burner exit [kg/s]
     mdot_b = mdot + mdot_f
@@ -129,8 +118,8 @@ def main():
     cp_5s5t = cst.lerp_cp(T0_5, far)  # cp guess
     for iter in range(n_iter):
         g_5s5t = cp_5s5t / (cp_5s5t - cst.R_air)
-        nprc = turb.nprc(g_5s5t)
-        Ts_5 = T0_5 / turb.T_static2total(M=Ms_5, g=g_5s5t)
+        nprc = jet.nprc(g_5s5t)
+        Ts_5 = T0_5 / jet.T_static2total(M=Ms_5, g=g_5s5t)
         table_conv.add_row(iter, cp_5s5t, Ts_5, g_5s5t, nprc)  # keep track of iterations
         cp_5s5t = cst.lerp_cp((Ts_5 + T0_5) / 2, far)  # iteration update
 

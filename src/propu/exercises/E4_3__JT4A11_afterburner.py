@@ -1,5 +1,5 @@
 import propu.constant as cst
-import propu.turbine as turb
+from propu import jet
 from propu.iteralg import IterTable
 
 
@@ -43,8 +43,8 @@ def main():
     v_0 = M_0 * a_0
     cp_0 = cst.lerp_cp(T_0, 0)
     g_0 = cp_0 / (cp_0 - cst.R_air)
-    T0_0 = T_0 * turb.T_static2total(M_0, g_0)
-    p0_0 = p_0 * turb.p_static2total(M_0, g_0)
+    T0_0 = T_0 * jet.T_static2total(M_0, g_0)
+    p0_0 = p_0 * jet.p_static2total(M_0, g_0)
 
     # From the previous exercise (E4_2__Nozzle_change)
     p0_4 = 519516.1  # Turbine outlet total pressure [Pa]
@@ -104,8 +104,8 @@ def main():
     cp_conv = cst.lerp_cp(T0_5, far_ab)  # cp guess
     for iter in range(n_iter):
         g_conv = cp_conv / (cp_conv - cst.R_air)
-        nprc = turb.nprc(g_conv)  # Not mandatory. Computed for curiosity
-        Ts_6 = T0_6 / turb.T_static2total(M=Ms_6, g=g_conv)
+        nprc = jet.nprc(g_conv)  # Not mandatory. Computed for curiosity
+        Ts_6 = T0_6 / jet.T_static2total(M=Ms_6, g=g_conv)
         table_conv.add_row(iter, cp_conv, Ts_6, g_conv, nprc)  # keep track of iterations
         cp_conv = cst.lerp_cp((Ts_6 + T0_6) / 2, far_ab)  # iteration update
 

@@ -58,4 +58,4 @@ It contains the following packages and modules.
   - `constant.py` Constant quantities used throughout the code.
   - `iteralg.py` Iterative algorithm utilities.
   - `bemt.py` Blade element momentum techniques.
-  - `turbine.py` Gas turbine and jet engine analyses.
+  - `jet.py` Jet engine cycle analyses.

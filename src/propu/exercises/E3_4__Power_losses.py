@@ -1,5 +1,5 @@
 import propu.constant as cst
-import propu.turbine as turb
+from propu import jet
 from propu.iteralg import IterTable
 
 
@@ -30,12 +30,9 @@ def main():
 
     ## 1. Stations 1 -> 2 : find T0_2 iteratively
 
-    g_12 = cst.gamma_air  # gamma guess
-    for iter in range(5):
-        T0_2 = cst.T_ref * turb.compressor_tau(pi_c, eta_s_c, g_12)
-        cp_12 = cst.lerp_cp((T0_2 + cst.T_ref) / 2, 0)
-        table_12.add_row(iter, cp_12, T0_2, g_12)  # keep track of iterations
-        g_12 = cp_12 / (cp_12 - cst.R_air)  # iteration update
+    # Find cp_12, T0_2, g_12 iteratively, by using the compressor eta-s equation.
+    g_12 = cst.gamma_air  # initial guess
+    cp_12, T0_2, g_12 = jet.compressor(cst.T_ref, pi_c, eta_s_c, g_12, table_12)
 
     # 2. Stations 1 -> 3 : find T0_3 iteratively
 
