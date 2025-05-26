@@ -4,6 +4,9 @@ from typing import NamedTuple
 from warnings import warn
 
 
+# NOTE:
+# Maybe I should have just used utilities from pandas,
+# instead of writing my own table printer that does some funky string manips.
 class IterTable:
     """Iteration table printer."""
 
@@ -36,7 +39,7 @@ class IterTable:
     def print(self):
         print(*self.header, sep="\n")
         print(*self.rows, sep="\n")
-        print(*self.footer)
+        print(*self.footer, sep="\n")
 
 
 def bisection(f, bounds: tuple[float, float], *, max_iter=20, ftol=1e-3, xtol=1e-3):
