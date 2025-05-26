@@ -31,7 +31,7 @@ class IterTable:
 
     def add_row(self, *variables_value):
         if len(variables_value) is not len(self.variables):
-            warn("Bro use my printing table correctly pls")
+            warn("Bro use my iteration table correctly pls")
         self.rows.append(
             "|" + "".join(f"{val:^{cs}.4g}|" for (val, cs) in zip(variables_value, self.colspaces))
         )

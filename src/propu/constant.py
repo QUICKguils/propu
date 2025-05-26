@@ -8,7 +8,7 @@ from scipy import interpolate
 
 ureg = pint.UnitRegistry()
 
-# Units (absent from pint)
+# Units (missing from pint)
 ureg.define("psf = 1 * lbf/ft**2")
 
 

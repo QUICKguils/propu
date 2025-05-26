@@ -5,6 +5,7 @@ from propu.iteralg import IterTable
 
 def main():
     print("Solving exo 4.2: Nozzle change")
+    # NOTE: see complement (8)
 
     ## Problem data and preliminaries
 
@@ -64,7 +65,7 @@ def main():
         cp_3r = cst.lerp_cp((T0_3 + cst.T_ref) / 2, far)
         table_23.add_row(iter, cp_3r, mdot_f, far)  # keep track of iterations
         # Update estimated mdot_f and far with combution equation balance.
-        # I could've take time to isolate mdot_f one one side, but this onverges anyways
+        # I could've take time to isolate mdot_f one one side, but this converges anyways.
         mdot_f = (
             (mdot_f + mdot) * cp_3r * (T0_3 - cst.T_ref) - mdot * cp_2r * (T0_2 - cst.T_ref)
         ) / (eta_cc * lhv)
@@ -100,10 +101,26 @@ def main():
 
     ## 3.1 Converging nozzle
 
+    # Check nozzle pressure ratio.
+    # print(f"{npr=:.4g}")
+    # NOTE:
+    # The NPRC value always lands approximately in the range [1.83 − 1.89].
+    # if npr < 1.83:
+    #    no need to iterate to find sonic conditions, it will be a waste of time.
+    #    The nozzle is adapted.
+    # if 1.83 < npr < 1.89:
+    #    Need to iterate on sonic condition, to find a more precise value of nprc.
+    #    Then see if actually chocked or not.
+    # if npr > 1.89:
+    #    Nozzle is chocked for sure, but in that case we still need to iterate
+    #    to find the sonic conditions.
+
     # Find cp_5s5t, g_5s5t, Ts_5, nprc iteratively
     # NOTE:
     # This only compute the quantities for a fictitious isentropic expansion
     # to the sonic speed (Ms_5 = 1), so that the nprc can be evaluated.
+    # If the nozzle then appears to be chocked, these sonic quantities
+    # then corresponds to the actual conditions at the nozzle.
     # Index "s" is for "sonic", index "t" is for "total".
     Ms_5 = 1  # By def. of sonic conditions
     cp_5s5t = cst.lerp_cp(T0_5, far)  # cp guess
@@ -173,7 +190,7 @@ def main():
     print("6. Convergent nozzle")
     print(f"   Thrust: {1e-3 * T_conv:.4g} kN")
     print(f"   SFC:    {10 * 3600 * SFC_conv:.4g} kg/(hr*daN)")
-    print("6. Conv-div nozzle")
+    print("7. Conv-div nozzle")
     print(f"   Thrust: {1e-3 * T_div:.4g} kN")
     print(f"   SFC:    {10 * 3600 * SFC_div:.4g} kg/(hr*daN)")
-    print(f"{a_5=:.4g}, {v_5=:.4g}")
+    print(far, mdot, mdot_f)

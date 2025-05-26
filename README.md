@@ -37,7 +37,7 @@ sol = part2.main()
 # Import all solved execises (recommended in interactive session only),
 # and execute one of them.
 from propu.exercises import *
-E3_5__Jet_fuel_starter.main()
+E4_2__Nozzle_change.main()
 
 # Example 3
 # Get the air density at 30_000 ft.
