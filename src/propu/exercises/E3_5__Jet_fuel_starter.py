@@ -38,7 +38,7 @@ def main():
 
     # Find cp_12, T0_2, g_12 iteratively, by using the compressor eta-s equation.
     g_12 = cst.gamma_air  # initial guess
-    cp_12, T0_2, g_12 = jet.compressor(T0_1, pi_c, eta_s_c, g_12, table_12)
+    cp_12, T0_2, g_12 = jet.compressor_s(T0_1, pi_c, eta_s_c, g_12, table_12)
 
     ## 2. Between the two turbines : find T0_4 iteratively
 

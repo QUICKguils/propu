@@ -5,6 +5,7 @@ from propu.iteralg import IterTable
 
 def main():
     print("Solving exo 4.6: Thrust of a two-spool turbofan")
+    # NOTE: see schematic on complement (9)
 
     ## Problem data and preliminaries
 
@@ -36,7 +37,8 @@ def main():
     p0_0 = p_0 * jet.p_static2total(M_0, g_0)
 
     # Immediatly computable
-    mdot_s = bpr * mdot_p
+    mdot_s = bpr * mdot_p  # Secondary flow
+    pi_c = opr / pi_f  # HPC pressure ratio
 
     # Instantiate the iteration tables
     table_12 = IterTable(("Iter", "cp_12", "T0_2", "gamma"), ("", "(J/(kg*K))", "(K)", ""))
@@ -55,13 +57,11 @@ def main():
 
     # Find cp_12, T0_2, g_12 iteratively, by using the compressor eta-s equation.
     g_12 = cst.gamma_air  # initial guess
-    cp_12, T0_2, g_12 = jet.compressor(T0_1, pi_f, eta_s_f, g_12, table_12)
-
-    pi_c = opr / pi_f  # HPC pressure ratio
+    cp_12, T0_2, g_12 = jet.compressor_s(T0_1, pi_f, eta_s_f, g_12, table_12)
 
     # Find cp_23, T0_3, g_23 iteratively, by using the compressor eta_s equation.
     g_23 = g_12  # initial guess
-    cp_23, T0_3, g_23 = jet.compressor(T0_2, pi_c, eta_s_c, g_23, table_23)
+    cp_23, T0_3, g_23 = jet.compressor_s(T0_2, pi_c, eta_s_c, g_23, table_23)
 
     # Find mdot_f and far iteratively, by using the combustion equation.
     far = 0.02  # Initial guess

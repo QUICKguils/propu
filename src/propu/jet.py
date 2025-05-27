@@ -44,12 +44,25 @@ def nprc(g):
     return p_static2total(M=1, g=g)
 
 
-def compressor(T0_in, pi, eta_s, g_guess, table, n_iter=4):
-    """Get compressor outlet flow conditions, iteratively."""
+def compressor_s(T0_in, pi, eta_s, g_guess, table, n_iter=4):
+    """Get compressor outlet flow conditions iteratively, by using the eta_s equation."""
     g = g_guess
     cp = T0_out = 0  # TBD
     for iter in range(n_iter):
         T0_out = T0_in * (1 + 1 / eta_s * (pi ** ((g - 1) / g) - 1))
+        cp = cst.lerp_cp((T0_in + T0_out) / 2, 0)
+        table.add_row(iter, cp, T0_out, g)  # keep track of iterations
+        g = cp / (cp - cst.R_air)  # iteration update
+
+    return (cp, T0_out, g)
+
+
+def compressor_p(T0_in, pi, eta_p, g_guess, table, n_iter=4):
+    """Get compressor outlet flow conditions iteratively, by using the eta_p equation."""
+    g = g_guess
+    cp = T0_out = 0  # TBD
+    for iter in range(n_iter):
+        T0_out = T0_in * pi ** ((g - 1) / (eta_p * g))
         cp = cst.lerp_cp((T0_in + T0_out) / 2, 0)
         table.add_row(iter, cp, T0_out, g)  # keep track of iterations
         g = cp / (cp - cst.R_air)  # iteration update
@@ -73,6 +86,25 @@ def combustion_chamber(T0_in, T0_out, eta_cc, lhv, mdot_p, far_guess, table, n_i
         far = mdot_f / mdot_p
 
     return (mdot_f, far)
+
+
+def afterburner(T0_in, eta_ab, lhv, mdot_p, mdot_f, mdot_f_ab, table, n_iter=4):
+    """Get afterburner outlet flow conditions iteratively, by using the combustion equation."""
+    far = mdot_f / mdot_p
+    far_ab = (mdot_f + mdot_f_ab) / mdot_p
+    T0_r = cst.T_ref
+    cpr_in = cst.lerp_cp((T0_in + T0_r) / 2, far)
+    cpr_out = cst.lerp_cp((T0_in + T0_r) / 2, far_ab)  # initial guess
+    T0_out = gr_out = 0  # TBD
+    for iter in range(n_iter):
+        T0_out = T0_r + (eta_ab * mdot_f_ab * lhv + (mdot_p + mdot_f) * cpr_in * (T0_in - T0_r)) / (
+            (mdot_p + mdot_f + mdot_f_ab) * cpr_out
+        )
+        gr_out = cpr_out / (cpr_out - cst.R_air)
+        table.add_row(iter, cpr_out, T0_out, gr_out)  # keep track of iterations
+        cpr_out = cst.lerp_cp((T0_out + T0_r) / 2, far_ab)
+
+    return cpr_out, T0_out, gr_out
 
 
 def turbine(T0_in, power, mdot_p, far, cp_guess, table, n_iter=4):

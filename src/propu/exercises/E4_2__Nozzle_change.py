@@ -53,7 +53,7 @@ def main():
     # Find T0_2, cp_12, g_12 iteratively, by using
     # the compressor isentropic efficiency equation.
     g_12 = cst.gamma_air  # initial guess
-    cp_12, T0_2, g_12 = jet.compressor(T0_1, pi_c, eta_s_c, g_12, table_12)
+    cp_12, T0_2, g_12 = jet.compressor_s(T0_1, pi_c, eta_s_c, g_12, table_12)
 
     # Find mdot_f and far iteratively, by using
     # the combustion equation.
