@@ -46,11 +46,8 @@ def main():
     P_c = mdot_a * cp_12 * (T0_2 - T0_1)
     P_t = P_c  # no P_s, as not already crossed the second turbine
 
-    cp_34 = cst.R_air * cst.gamma_air / (cst.gamma_air - 1)  # cp guess
-    for iter in range(3):
-        T0_4 = T0_3 - P_t / (mdot_b * cp_34)
-        table_34.add_row(iter, cp_34, T0_4)  # keep track of iterations
-        cp_34 = cst.lerp_cp((T0_3 + T0_4) / 2, far)  # iteration update
+    # Find turbine outlet conditions iteratively, by using the turbine power equation.
+    _ = jet.turbine(T0_3, P_t, mdot_a, far, cp_12, table_34)  # just side effect of completing the table
 
     ## 3. Efficiency of the combustion chamber
 

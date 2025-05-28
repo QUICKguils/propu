@@ -45,7 +45,7 @@ def get_nprc(g):
     return p_static2total(M=1, g=g)
 
 
-def compressor_s(T0_in, pi, eta_s, g_guess, table, n_iter=4):
+def compressor_s(T0_in, pi, eta_s, g_guess, table: IterTable, n_iter=4):
     """Get compressor outlet flow conditions iteratively, by using the eta_s equation."""
     g = g_guess
     cp = T0_out = 0  # TBD
@@ -58,7 +58,7 @@ def compressor_s(T0_in, pi, eta_s, g_guess, table, n_iter=4):
     return (cp, T0_out, g)
 
 
-def compressor_p(T0_in, pi, eta_p, g_guess, table, n_iter=4):
+def compressor_p(T0_in, pi, eta_p, g_guess, table: IterTable, n_iter=4):
     """Get compressor outlet flow conditions iteratively, by using the eta_p equation."""
     g = g_guess
     cp = T0_out = 0  # TBD
@@ -71,7 +71,7 @@ def compressor_p(T0_in, pi, eta_p, g_guess, table, n_iter=4):
     return (cp, T0_out, g)
 
 
-def combustion_chamber(T0_in, T0_out, eta_cc, lhv, mdot_p, far_guess, table, n_iter=4):
+def combustion_chamber(T0_in, T0_out, eta_cc, lhv, mdot_p, far_guess, table: IterTable, n_iter=4):
     """Get the fuel mass flow rate from the combustion equation, iteratively."""
     cpr_in = cst.lerp_cp((T0_in + cst.T_ref) / 2, 0)
     far = far_guess
@@ -89,7 +89,7 @@ def combustion_chamber(T0_in, T0_out, eta_cc, lhv, mdot_p, far_guess, table, n_i
     return (mdot_f, far)
 
 
-def turbine(T0_in, power, mdot_p, far, cp_guess, table, n_iter=4):
+def turbine(T0_in, power, mdot_p, far, cp_guess, table: IterTable, n_iter=4):
     """Get turbine outlet flow conditions iteratively, by using the turbine power equation."""
     cp = cp_guess
     g = T0_out = 0  # TBD
@@ -101,7 +101,7 @@ def turbine(T0_in, power, mdot_p, far, cp_guess, table, n_iter=4):
     return (cp, T0_out, g)
 
 
-def afterburner(T0_in, eta_ab, lhv, mdot_p, mdot_f, mdot_f_ab, table, n_iter=4):
+def afterburner(T0_in, eta_ab, lhv, mdot_p, mdot_f, mdot_f_ab, table: IterTable, n_iter=4):
     """Get afterburner outlet flow conditions iteratively, by using the combustion equation."""
     far = mdot_f / mdot_p
     far_ab = (mdot_f + mdot_f_ab) / mdot_p
@@ -120,7 +120,7 @@ def afterburner(T0_in, eta_ab, lhv, mdot_p, mdot_f, mdot_f_ab, table, n_iter=4):
     return (cpr_out, T0_out, gr_out)
 
 
-def nozzle_sonic(T0, p0, far, table, n_iter=4):
+def nozzle_sonic(T0, p0, far, table: IterTable, n_iter=4):
     """Get nozzle sonic flow conditions iteratively, by using isentropic relations."""
     M = 1  # By def. of sonic conditions
 
@@ -133,25 +133,23 @@ def nozzle_sonic(T0, p0, far, table, n_iter=4):
         table.add_row(iter, cp, T, g, nprc)  # keep track of iterations
         cp = cst.lerp_cp((T + T0) / 2, far)  # iteration update
 
-    # Speed and pressure
     p = p0 / nprc
     rho = p / (cst.R_air * T)
     a = (g * cst.R_air * T) ** 0.5  # = speed, as sonic conditions (M = 1)
 
-    # Nicely pack the computed results
     class SonicConditions(NamedTuple):
-        rho: float
-        p: float
-        T: float
-        a: float
-        cp: float
-        g: float
-        nprc: float
+        rho: float  # density
+        p: float  # pressure
+        T: float  # temperature
+        a: float  # sonic speed
+        cp: float  # heat capacity at constant pressure
+        g: float  # adiabatic index
+        nprc: float  # critical nozzle pressure ratio
 
     return SonicConditions(rho=rho, p=p, T=T, a=a, cp=cp, g=g, nprc=nprc)
 
 
-def nozzle_adapted(T0, npr, far, g_guess, table, n_iter=4):
+def nozzle_adapted(T0, npr, far, g_guess, table: IterTable, n_iter=4):
     """Get adapted nozzle exhaust flow conditions iteratively, by using isentropic relations."""
     g = g_guess  # initial guess
     M = T = 0  # TBD
@@ -162,17 +160,16 @@ def nozzle_adapted(T0, npr, far, g_guess, table, n_iter=4):
         table.add_row(iter, cp, T, g, M)  # keep track of iterations
         g = cp / (cp - cst.R_air)  # iteration update
 
-    # Speeds
     a = (g * cst.R_air * T) ** 0.5
     v = M * a
 
     class AdaptedExhaustConditions(NamedTuple):
-        T: float
-        a: float
-        M: float
-        v: float
-        cp: float
-        g: float
+        T: float  # temperature
+        a: float  # sonic speed
+        M: float  # Mach number
+        v: float  # speed
+        cp: float  # heat capacity at constant pressure
+        g: float  # adiabatic index
 
     return AdaptedExhaustConditions(T=T, a=a, M=M, v=v, cp=cp, g=g)
 

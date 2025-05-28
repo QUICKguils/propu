@@ -37,7 +37,8 @@ def main():
     # 2. Stations 1 -> 3 : find T0_3 iteratively
 
     g_13 = cst.gamma_air  # gamma guess
-    cp_13 = cst.R_air * g_13 / (g_13 - 1)  # cp guess
+    cp_13 = cst.R_air * g_13 / (g_13 - 1)  # resulting cp guess
+    T0_3 = 0  # TBD
     for iter in range(5):
         T0_3 = cst.T_ref + (eta_cc * lhv * mdot_f + mdot_a * cp_12 * (T0_2 - cst.T_ref)) / (
             mdot_b * cp_13
