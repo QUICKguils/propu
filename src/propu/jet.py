@@ -88,6 +88,17 @@ def combustion_chamber(T0_in, T0_out, eta_cc, lhv, mdot_p, far_guess, table, n_i
     return (mdot_f, far)
 
 
+def turbine(T0_in, power, mdot_p, far, cp_guess, table, n_iter=4):
+    cp = cp_guess
+    g = T0_out = 0  # TBD
+    for iter in range(n_iter):
+        T0_out = T0_in - power / (mdot_p * (1 + far) * cp)
+        g = cp / (cp - cst.R_air)
+        table.add_row(iter, cp, T0_out, g)  # keep track of iterations
+        cp = cst.lerp_cp((T0_in + T0_out) / 2, far)  # iteration update
+    return (cp, T0_out, g)
+
+
 def afterburner(T0_in, eta_ab, lhv, mdot_p, mdot_f, mdot_f_ab, table, n_iter=4):
     """Get afterburner outlet flow conditions iteratively, by using the combustion equation."""
     far = mdot_f / mdot_p
@@ -105,17 +116,6 @@ def afterburner(T0_in, eta_ab, lhv, mdot_p, mdot_f, mdot_f_ab, table, n_iter=4):
         cpr_out = cst.lerp_cp((T0_out + T0_r) / 2, far_ab)
 
     return cpr_out, T0_out, gr_out
-
-
-def turbine(T0_in, power, mdot_p, far, cp_guess, table, n_iter=4):
-    cp = cp_guess
-    g = T0_out = 0  # TBD
-    for iter in range(n_iter):
-        T0_out = T0_in - power / (mdot_p * (1 + far) * cp)
-        g = cp / (cp - cst.R_air)
-        table.add_row(iter, cp, T0_out, g)  # keep track of iterations
-        cp = cst.lerp_cp((T0_in + T0_out) / 2, far)  # iteration update
-    return (cp, T0_out, g)
 
 
 def mdot_chocking(A, p0, T0, g, R=cst.R_air):

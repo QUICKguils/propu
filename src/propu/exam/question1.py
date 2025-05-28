@@ -142,7 +142,7 @@ def main():
     rho_7_wet = p_7_wet / (cst.R_air * T_7_wet)
     A_7_wet = (mdot_p + mdot_f + mdot_f_ab) / (rho_7_wet * v_7_wet)
 
-    # 2.1.1 Conditions at nozzle exhaust
+    # 2.1.2 Conditions at nozzle exhaust
 
     # Find cp, T, M at wet exhaust iteratively, by using the isentropic relations.
     g_8_wet = g_7_wet  # initial guess
@@ -193,7 +193,7 @@ def main():
     rho_7_dry = p_7_dry / (cst.R_air * T_7_dry)
     A_7_dry = (mdot_p + mdot_f) / (rho_7_dry * v_7_dry)
 
-    # 2.2.1 Conditions at nozzle exhaust
+    # 2.2.2 Conditions at nozzle exhaust
 
     # Find cp, T, M at dry exhaust iteratively, by using the isentropic relations.
     g_8_dry = g_7_dry  # initial guess
@@ -303,7 +303,7 @@ def main():
     print(f"Air kinetic loss: {1e-6 * kinetic_loss_wet:.4g} MW")
     print(f"Propulsive efficiency: {eta_prop_wet:.4g}")
     print(f"Thermal efficiency: {eta_thermal_wet:.4g}")
-    print(f"Overall efficiency: {eta_thermal_wet:.4g}")
+    print(f"Overall efficiency: {eta_overall_wet:.4g}")
 
     print("\n3.2 Dry conditions")
     print(f"Thermal power: {1e-6 * P_t_dry:.4g} MW")
@@ -313,4 +313,4 @@ def main():
     print(f"Air kinetic loss: {1e-6 * kinetic_loss_dry:.4g} MW")
     print(f"Propulsive efficiency: {eta_prop_dry:.4g}")
     print(f"Thermal efficiency: {eta_thermal_dry:.4g}")
-    print(f"Overall efficiency: {eta_thermal_dry:.4g}")
+    print(f"Overall efficiency: {eta_overall_dry:.4g}")
