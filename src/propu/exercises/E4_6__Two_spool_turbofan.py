@@ -131,7 +131,7 @@ def main():
     nprc = T_8 = g_8 = 0  # TBD
     for iter in range(4):
         g_8 = cp_8 / (cp_8 - cst.R_air)
-        nprc = jet.nprc(g_8)
+        nprc = jet.get_nprc(g_8)
         T_8 = T0_8 / jet.T_static2total(M=M_8, g=g_8)
         table_8.add_row(iter, cp_8, T_8, g_8, nprc)  # keep track of iterations
         cp_8 = cst.lerp_cp((T_8 + T0_8) / 2, far)  # iteration update

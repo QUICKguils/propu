@@ -120,49 +120,23 @@ def main():
     p0_7_wet = p0_8_wet = p0_6  # Isentropic expansion w/o work
     npr_wet = p0_6 / p_0  # nozzle pressure ratio
 
-    # 2.1.1 Conditions at nozzle throat
-
-    # Find the sonic conditions iteratively.
-    M_7_wet = 1  # By def. of sonic conditions
-    cp_7_wet = cst.lerp_cp(T0_7_wet, far_ab)  # initial guess
-    nprc_wet = T_7_wet = g_7_wet = 0  # TBD
-    for iter in range(4):
-        g_7_wet = cp_7_wet / (cp_7_wet - cst.R_air)
-        nprc_wet = jet.nprc(g_7_wet)  # computed for curiosity
-        T_7_wet = T0_7_wet / jet.T_static2total(M=M_7_wet, g=g_7_wet)
-        table_7_wet.add_row(iter, cp_7_wet, T_7_wet, g_7_wet, nprc_wet)  # keep track of iterations
-        cp_7_wet = cst.lerp_cp((T_7_wet + T0_7_wet) / 2, far_ab)  # iteration update
-
-    # Exhaust speed and pressure
-    a_7_wet = (g_7_wet * cst.R_air * T_7_wet) ** 0.5
-    v_7_wet = M_7_wet * a_7_wet  # = a_7_wet, as sonic conditions (M_7_wet = 1)
-    p_7_wet = p0_7_wet / nprc_wet
-
-    # Area of the nozzle, given the mass flow that needs to pass
-    rho_7_wet = p_7_wet / (cst.R_air * T_7_wet)
+    # Find the nozzle throat conditions iteratively, by using the isentropic relations.
+    sonic_wet = jet.nozzle_sonic(T0_7_wet, p0_7_wet, far_ab, table_7_wet)
+    rho_7_wet = sonic_wet.rho
+    v_7_wet = sonic_wet.a
+    g_7_wet = sonic_wet.g
+    # Nozzle throat area, given the mass flow that needs to pass
     A_7_wet = (mdot_p + mdot_f + mdot_f_ab) / (rho_7_wet * v_7_wet)
 
-    # 2.1.2 Conditions at nozzle exhaust
-
-    # Find cp, T, M at wet exhaust iteratively, by using the isentropic relations.
-    g_8_wet = g_7_wet  # initial guess
-    M_8_wet = T_8_wet = 0  # TBD
-    for iter in range(4):
-        T_8_wet = T0_8_wet * npr_wet ** ((1 - g_8_wet) / g_8_wet)  # Isentropic relations
-        cp_8 = cst.lerp_cp((T0_8_wet + T_8_wet) / 2, far_ab)
-        M_8_wet = (((T0_8_wet / T_8_wet) - 1) * 2 / (g_8_wet - 1)) ** 0.5
-        table_8_wet.add_row(iter, cp_8, T_8_wet, g_8_wet, M_8_wet)  # keep track of iterations
-        g_8_wet = cp_8 / (cp_8 - cst.R_air)  # iteration update
-
-    # Exhaust speed
-    a_8_wet = (g_8_wet * cst.R_air * T_8_wet) ** 0.5
-    v_8_wet = M_8_wet * a_8_wet
-
-    # Thrust
-    # No contribution from pressure difference, as the nozzle is adaped.
+    # Find the nozzle exhaust conditions iteratively, by using the isentropic relations.
+    exhaust_wet = jet.nozzle_adapted(T0_8_wet, npr_wet, far_ab, g_7_wet, table_8_wet)
+    v_8_wet = exhaust_wet.v
+    # Thrust (no contribution from pressure difference, as the nozzle is adaped)
     thrust_wet = (mdot_p + mdot_f + mdot_f_ab) * v_8_wet - mdot_p * v_0
 
     # 2.2 Dry conditions
+
+    # NOTE:
     # We can simply ignore the afterburner, and use the outlet turbine conditions
     # (station 5) as the inlet of the nozzle.
     # One should however be careful to not take into account mdot_f_ab anymore.
@@ -171,46 +145,19 @@ def main():
     p0_7_dry = p0_8_dry = p0_5  # Isentropic expansion w/o work
     npr_dry = p0_5 / p_0  # nozzle pressure ratio
 
-    # 2.2.1 Conditions at nozzle throat
-
-    # Find the sonic conditions iteratively.
-    M_7_dry = 1  # By def. of sonic conditions
-    cp_7_dry = cst.lerp_cp(T0_7_dry, far)  # initial guess
-    nprc_dry = T_7_dry = g_7_dry = 0  # TBD
-    for iter in range(4):
-        g_7_dry = cp_7_dry / (cp_7_dry - cst.R_air)
-        nprc_dry = jet.nprc(g_7_dry)  # computed for curiosity
-        T_7_dry = T0_7_dry / jet.T_static2total(M=M_7_dry, g=g_7_dry)
-        table_7_dry.add_row(iter, cp_7_dry, T_7_dry, g_7_dry, nprc_dry)  # keep track of iterations
-        cp_7_dry = cst.lerp_cp((T_7_dry + T0_7_dry) / 2, far)  # iteration update
-
-    # Exhaust speed and pressure
-    a_7_dry = (g_7_dry * cst.R_air * T_7_dry) ** 0.5
-    v_7_dry = M_7_dry * a_7_dry  # = a_7_dry, as sonic conditions (M_7_dry = 1)
-    p_7_dry = p0_7_dry / nprc_dry
-
-    # Area of the nozzle, given the mass flow that needs to pass
-    rho_7_dry = p_7_dry / (cst.R_air * T_7_dry)
+    # Find the nozzle throat conditions iteratively, by using the isentropic relations.
+    sonic_dry = jet.nozzle_sonic(T0_7_dry, p0_7_dry, far_ab, table_7_dry)
+    # Extract quantities useful for the following
+    rho_7_dry = sonic_dry.rho
+    v_7_dry = sonic_dry.a
+    g_7_dry = sonic_dry.g
+    # Nozzle throat area, given the mass flow that needs to pass
     A_7_dry = (mdot_p + mdot_f) / (rho_7_dry * v_7_dry)
 
-    # 2.2.2 Conditions at nozzle exhaust
-
-    # Find cp, T, M at dry exhaust iteratively, by using the isentropic relations.
-    g_8_dry = g_7_dry  # initial guess
-    M_8_dry = T_8_dry = 0  # TBD
-    for iter in range(4):
-        T_8_dry = T0_8_dry * npr_dry ** ((1 - g_8_dry) / g_8_dry)  # Isentropic relations
-        cp_8 = cst.lerp_cp((T0_8_dry + T_8_dry) / 2, far)
-        M_8_dry = (((T0_8_dry / T_8_dry) - 1) * 2 / (g_8_dry - 1)) ** 0.5
-        table_8_dry.add_row(iter, cp_8, T_8_dry, g_8_dry, M_8_dry)  # keep track of iterations
-        g_8_dry = cp_8 / (cp_8 - cst.R_air)  # iteration update
-
-    # Exhaust speed
-    a_8_dry = (g_8_dry * cst.R_air * T_8_dry) ** 0.5
-    v_8_dry = M_8_dry * a_8_dry
-
-    # Thrust
-    # No contribution from pressure difference, as the nozzle is adaped.
+    # Find the nozzle exhaust conditions iteratively, by using the isentropic relations.
+    exhaust_dry = jet.nozzle_adapted(T0_8_dry, npr_dry, far, g_7_dry, table_8_dry)
+    v_8_dry = exhaust_dry.v
+    # Thrust (no contribution from pressure difference, as the nozzle is adaped)
     thrust_dry = (mdot_p + mdot_f) * v_8_dry - mdot_p * v_0
 
     ## 3. Performance analysis

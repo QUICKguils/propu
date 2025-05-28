@@ -1,5 +1,6 @@
 """Jet engine cycle analyses."""
 
+from typing import NamedTuple
 import propu.constant as cst
 from propu.iteralg import IterTable
 
@@ -39,7 +40,7 @@ def a_static2total(M, g):
     return _f(M, g) ** 0.5
 
 
-def nprc(g):
+def get_nprc(g):
     """Critical nozzle pressure ratio."""
     return p_static2total(M=1, g=g)
 
@@ -89,6 +90,7 @@ def combustion_chamber(T0_in, T0_out, eta_cc, lhv, mdot_p, far_guess, table, n_i
 
 
 def turbine(T0_in, power, mdot_p, far, cp_guess, table, n_iter=4):
+    """Get turbine outlet flow conditions iteratively, by using the turbine power equation."""
     cp = cp_guess
     g = T0_out = 0  # TBD
     for iter in range(n_iter):
@@ -115,7 +117,64 @@ def afterburner(T0_in, eta_ab, lhv, mdot_p, mdot_f, mdot_f_ab, table, n_iter=4):
         table.add_row(iter, cpr_out, T0_out, gr_out)  # keep track of iterations
         cpr_out = cst.lerp_cp((T0_out + T0_r) / 2, far_ab)
 
-    return cpr_out, T0_out, gr_out
+    return (cpr_out, T0_out, gr_out)
+
+
+def nozzle_sonic(T0, p0, far, table, n_iter=4):
+    """Get nozzle sonic flow conditions iteratively, by using isentropic relations."""
+    M = 1  # By def. of sonic conditions
+
+    cp = cst.lerp_cp(T0, far)  # initial guess
+    nprc = T = g = 0  # TBD
+    for iter in range(n_iter):
+        g = cp / (cp - cst.R_air)
+        nprc = get_nprc(g)  # critical nozzle pressure ratio
+        T = T0 / T_static2total(M=M, g=g)  # Expansion/compression to sonic conditions
+        table.add_row(iter, cp, T, g, nprc)  # keep track of iterations
+        cp = cst.lerp_cp((T + T0) / 2, far)  # iteration update
+
+    # Speed and pressure
+    p = p0 / nprc
+    rho = p / (cst.R_air * T)
+    a = (g * cst.R_air * T) ** 0.5  # = speed, as sonic conditions (M = 1)
+
+    # Nicely pack the computed results
+    class SonicConditions(NamedTuple):
+        rho: float
+        p: float
+        T: float
+        a: float
+        cp: float
+        g: float
+        nprc: float
+
+    return SonicConditions(rho=rho, p=p, T=T, a=a, cp=cp, g=g, nprc=nprc)
+
+
+def nozzle_adapted(T0, npr, far, g_guess, table, n_iter=4):
+    """Get adapted nozzle exhaust flow conditions iteratively, by using isentropic relations."""
+    g = g_guess  # initial guess
+    M = T = 0  # TBD
+    for iter in range(n_iter):
+        T = T0 * npr ** ((1 - g) / g)  # Isentropic relations
+        cp = cst.lerp_cp((T0 + T) / 2, far)
+        M = (((T0 / T) - 1) * 2 / (g - 1)) ** 0.5
+        table.add_row(iter, cp, T, g, M)  # keep track of iterations
+        g = cp / (cp - cst.R_air)  # iteration update
+
+    # Speeds
+    a = (g * cst.R_air * T) ** 0.5
+    v = M * a
+
+    class AdaptedExhaustConditions(NamedTuple):
+        T: float
+        a: float
+        M: float
+        v: float
+        cp: float
+        g: float
+
+    return AdaptedExhaustConditions(T=T, a=a, M=M, v=v, cp=cp, g=g)
 
 
 def mdot_chocking(A, p0, T0, g, R=cst.R_air):

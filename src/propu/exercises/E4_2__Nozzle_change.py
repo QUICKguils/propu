@@ -118,7 +118,7 @@ def main():
     cp_5s5t = cst.lerp_cp(T0_5, far)  # cp guess
     for iter in range(n_iter):
         g_5s5t = cp_5s5t / (cp_5s5t - cst.R_air)
-        nprc = jet.nprc(g_5s5t)
+        nprc = jet.get_nprc(g_5s5t)
         Ts_5 = T0_5 / jet.T_static2total(M=Ms_5, g=g_5s5t)
         table_conv.add_row(iter, cp_5s5t, Ts_5, g_5s5t, nprc)  # keep track of iterations
         cp_5s5t = cst.lerp_cp((Ts_5 + T0_5) / 2, far)  # iteration update
