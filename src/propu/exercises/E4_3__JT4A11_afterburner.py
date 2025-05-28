@@ -47,11 +47,11 @@ def main():
     p0_0 = p_0 * jet.p_static2total(M_0, g_0)
 
     # From the previous exercise (E4_2__Nozzle_change)
-    p0_4 = 519516.1  # Turbine outlet total pressure [Pa]
-    T0_4 = 1050.7725  # Turbine outlet total temperature [K]
-    far = 0.020329  # fuel-to-air ratio
-    mdot = 74.842741  # Inlet mass flow rate [kg/s]
-    mdot_f = 1.5214  # Combustion chamber fuel rate [kg/s]
+    p0_4 = 511491  # Turbine outlet total pressure [Pa]
+    T0_4 = 1047.3  # Turbine outlet total temperature [K]
+    far = 0.0203292  # fuel-to-air ratio
+    mdot = 74.8427  # Inlet mass flow rate [kg/s]
+    mdot_f = 1.5215  # Combustion chamber fuel rate [kg/s]
     mdot_b = mdot + mdot_f
 
     # Instantiate the iteration tables
@@ -99,49 +99,27 @@ def main():
     # => 4.957
     # => Chocked for sure.
 
-    # Find sonic conditions iteratively
-    Ms_6 = 1  # By def. of sonic conditions
-    cp_conv = cst.lerp_cp(T0_5, far_ab)  # cp guess
-    for iter in range(n_iter):
-        g_conv = cp_conv / (cp_conv - cst.R_air)
-        nprc = jet.get_nprc(g_conv)  # Not mandatory. Computed for curiosity
-        Ts_6 = T0_6 / jet.T_static2total(M=Ms_6, g=g_conv)
-        table_conv.add_row(iter, cp_conv, Ts_6, g_conv, nprc)  # keep track of iterations
-        cp_conv = cst.lerp_cp((Ts_6 + T0_6) / 2, far_ab)  # iteration update
-
-    # Exhaust speed and pressure
-    a_6 = (g_conv * cst.R_air * Ts_6) ** 0.5
-    v_6 = Ms_6 * a_6  # = a_6, as sonic conditions (Ms_6 = 1)
-    p_6 = p0_6 / nprc
-
-    # Area of the nozzle, given the mdot_b that needs to pass
-    rho_6 = p_6 / (cst.R_air * Ts_6)
-    A = mdot_b / (rho_6 * v_6)
+    # Find the nozzle throat conditions iteratively, by using the isentropic relations.
+    convergent = jet.nozzle_sonic(T0_6, p0_6, far_ab, table_conv)
+    rho_6_conv = convergent.rho
+    v_6_conv = convergent.a
+    g_6_conv = convergent.g
+    p_6_conv = convergent.p
+    # Nozzle throat area, given the mass flow that needs to pass
+    A = (mdot + mdot_f + mdot_f_ab) / (rho_6_conv * v_6_conv)
 
     # Thrust and SFC
-    T_conv = (p_6 - p_0) * A + (mdot_b + mdot_f_ab) * v_6 - mdot * v_0
+    T_conv = (p_6_conv - p_0) * A + (mdot_b + mdot_f_ab) * v_6_conv - mdot * v_0
     SFC_conv = (mdot_f + mdot_f_ab) / T_conv
 
     ## 3.2. Conv-div nozzle
 
-    # NOTE:
-    # Conv-div nozzle are always assumed to be adapted.
-    # So p_6 = p_0, and npr := p0_6/p_0 = p0_6/p_6.
-
-    g_div = g_conv  # gamma guess
-    for iter in range(n_iter):
-        T_6_div = T0_6 * npr ** ((1 - g_div) / g_div)  # Isentropic relations
-        cp_div = cst.lerp_cp((T0_6 + T_6_div) / 2, far_ab)
-        M_6 = (((T0_6 / T_6_div) - 1) * 2 / (g_div - 1)) ** 0.5
-        table_div.add_row(iter, cp_div, T_6_div, g_div, M_6)  # keep track of iterations
-        g_div = cp_div / (cp_div - cst.R_air)  # iteration update
-
-    # Exhaust speed
-    a_6 = (g_div * cst.R_air * T_6_div) ** 0.5
-    v_6 = M_6 * a_6
+    # Find the nozzle exhaust conditions iteratively, by using the isentropic relations.
+    divergent = jet.nozzle_adapted(T0_6, npr, far_ab, g_6_conv, table_div)
+    v_6_div = divergent.v
 
     # Thrust and SFC
-    T_div = (mdot_b + mdot_f_ab) * v_6 - mdot * v_0  # p_5 = p_0
+    T_div = (mdot_b + mdot_f_ab) * v_6_div - mdot * v_0  # p_5 = p_0
     SFC_div = (mdot_f + mdot_f_ab) / T_div
 
     ## Print results

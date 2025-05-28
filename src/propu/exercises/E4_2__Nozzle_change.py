@@ -67,15 +67,11 @@ def main():
 
     # Compressor and turbine power via global power balance
     P_c = mdot * cp_12 * (T0_2 - T0_1)
-    P_t = eta_m * P_c
+    P_t = P_c / eta_m
 
     # Find T0_4, cp_34, g_34 iteratively
     cp_34 = cst.lerp_cp(T0_3, far)  # cp_34 guess
-    for iter in range(n_iter):
-        T0_4 = T0_3 - P_t / (mdot_b * cp_34)
-        g_34 = cp_34 / (cp_34 - cst.R_air)
-        table_34.add_row(iter, cp_34, T0_4, g_34)  # keep track of iterations
-        cp_34 = cst.lerp_cp((T0_3 + T0_4) / 2, far)  # iteration update
+    cp_34, T0_4, g_34 = jet.turbine(T0_3, P_t, mdot, far, cp_34, table_34)
 
     # Find p0_4 from turbine isentropic condition
     p0_3 = p0_0 * rr * pi_c * pi_cc  # chained compressions
@@ -107,62 +103,43 @@ def main():
     # => 5.127
     # => Chocked for sure.
 
-    # Find cp_5s5t, g_5s5t, Ts_5, nprc iteratively
-    # NOTE:
-    # This only compute the quantities for a fictitious isentropic expansion
-    # to the sonic speed (Ms_5 = 1), so that the nprc can be evaluated.
-    # If the nozzle then appears to be chocked, these sonic quantities
-    # then corresponds to the actual conditions at the nozzle.
-    # Index "s" is for "sonic", index "t" is for "total".
-    Ms_5 = 1  # By def. of sonic conditions
-    cp_5s5t = cst.lerp_cp(T0_5, far)  # cp guess
-    for iter in range(n_iter):
-        g_5s5t = cp_5s5t / (cp_5s5t - cst.R_air)
-        nprc = jet.get_nprc(g_5s5t)
-        Ts_5 = T0_5 / jet.T_static2total(M=Ms_5, g=g_5s5t)
-        table_conv.add_row(iter, cp_5s5t, Ts_5, g_5s5t, nprc)  # keep track of iterations
-        cp_5s5t = cst.lerp_cp((Ts_5 + T0_5) / 2, far)  # iteration update
-
     # NOTE:
     # The computed NPR appears to be well over 1.9
     # => it can safely be assumed that the nozzle is chocked.
     # There was actually no need to get a more precise value of the NPRC through iterations.
     # This NPRC was computed mainly for curiosity, to see its values through iterations.
     # Anyways, the iterations are still necessary for a chocked nozzle,
-    # because we have to compute g5s5t and Ts_5, in order to get p_5 and v_5.
-    a_5 = (g_5s5t * cst.R_air * Ts_5) ** 0.5
-    v_5 = Ms_5 * a_5  # = a_5, as sonic conditions (Ms_5 = 1)
-    p_5 = p0_5 / nprc
+    # because we have to compute the other sonic flow parameters at the chocked exhaust,
+    # like the exhaust speed and pressure.
 
-    # Area of the nozzle, given the mdot_b that needs to pass
-    rho_5 = p_5 / (cst.R_air * Ts_5)
-    A = mdot_b / (rho_5 * v_5)
+    # NOTE:
+    # This only compute the quantities for a fictitious isentropic expansion
+    # to the sonic speed (Ms_5 = 1), so that the nprc can be evaluated.
+    # If the nozzle then appears to be chocked, these sonic quantities
+    # then corresponds to the actual conditions at the nozzle exhaust.
+    convergent = jet.nozzle_sonic(T0_5, p0_5, far, table_conv)
+    rho_5_conv = convergent.rho
+    v_5_conv = convergent.a
+    p_5_conv = convergent.p
+    g_5_conv = convergent.g
+    # Nozzle throat area, given the mass flow that needs to pass
+    A = mdot_b / (rho_5_conv * v_5_conv)
 
     # Thrust and SFC
-    T_conv = (p_5 - p_0) * A + mdot_b * v_5 - mdot * v_0
+    T_conv = (p_5_conv - p_0) * A + mdot_b * v_5_conv - mdot * v_0
     SFC_conv = mdot_f / T_conv
 
     ## 3.2. Conv-div nozzle
 
     # NOTE:
     # Conv-div nozzle are always assumed to be adapted.
-    # So p_5 = p_0, and npr := p0_5/p_0 = p0_5/p_5.
 
-    # Find cp, T_5 and M_5 for conv-div nozzle
-    g_div = g_5s5t  # gamma guess
-    for iter in range(n_iter):
-        T_5_div = T0_5 * npr ** ((1 - g_div) / g_div)  # Isentropic relations
-        cp_div = cst.lerp_cp((T0_5 + T_5_div) / 2, far)
-        M_5 = (((T0_5 / T_5_div) - 1) * 2 / (g_div - 1)) ** 0.5
-        table_div.add_row(iter, cp_div, T_5_div, g_div, M_5)  # keep track of iterations
-        g_div = cp_div / (cp_div - cst.R_air)  # iteration update
-
-    # Exhaust speed
-    a_5 = (g_div * cst.R_air * T_5_div) ** 0.5
-    v_5 = M_5 * a_5
+    # Find the nozzle exhaust conditions iteratively, by using the isentropic relations.
+    divergent = jet.nozzle_adapted(T0_5, npr, far, g_5_conv, table_div)
+    v_5_div = divergent.v
 
     # Thrust and SFC
-    T_div = mdot_b * v_5 - mdot * v_0  # p_5 = p_0
+    T_div = mdot_b * v_5_div - mdot * v_0  # p_5 = p_0
     SFC_div = mdot_f / T_div
 
     ## Print results
@@ -185,3 +162,9 @@ def main():
     print("7. Conv-div nozzle")
     print(f"   Thrust: {1e-3 * T_div:.4g} kN")
     print(f"   SFC:    {10 * 3600 * SFC_div:.4g} kg/(hr*daN)")
+    print("A. For the next exercise")
+    print(f"   {p0_4=:.6g} Pa")
+    print(f"   {T0_4=:.6g} K")
+    print(f"   {far=:.6g}")
+    print(f"   {mdot=:.6g} kg/s")
+    print(f"   {mdot_f=:.6g} kg/s")
